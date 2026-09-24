@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.env
+
+# Jupyter Notebooks
+.ipynb_checkpoints
+
+# IDEs
+.vscode/
+.idea/
+
+# Datos pesados
+# Ignoramos los archivos de datos binarios grandes
+data/*.npy
+# Opcionalmente, puedes descomentar la siguiente línea para ignorar también los metadatos json
+# data/*.json

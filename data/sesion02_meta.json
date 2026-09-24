@@ -1,0 +1,25 @@
+{
+  "session_name": "sesion02",
+  "timestamp": "2026-09-17T18:53:19.156576",
+  "device": "Muse 2",
+  "source": "BrainFlow BLE directo",
+  "firmware_version": "1.0.27",
+  "sampling_rate": 256,
+  "eeg_channel_indices": [
+    1,
+    2,
+    3,
+    4
+  ],
+  "eeg_channel_names": [
+    "TP9",
+    "AF7",
+    "AF8",
+    "TP10"
+  ],
+  "duration_sec": 30,
+  "data_shape": [
+    8,
+    7596
+  ]
+}

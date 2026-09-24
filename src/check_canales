@@ -1,0 +1,6 @@
+from brainflow.board_shim import BoardShim, BoardIds
+
+board_id = BoardIds.MUSE_2_BOARD.value
+print("Canales EEG (índices de fila):", BoardShim.get_eeg_channels(board_id))
+print("Nombres de canales:", BoardShim.get_eeg_names(board_id))
+print("Frecuencia de muestreo:", BoardShim.get_sampling_rate(board_id))
