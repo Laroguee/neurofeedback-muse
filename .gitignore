@@ -13,8 +13,4 @@ env/
 .vscode/
 .idea/
 
-# Datos pesados
-# Ignoramos los archivos de datos binarios grandes
-data/*.npy
-# Opcionalmente, puedes descomentar la siguiente línea para ignorar también los metadatos json
-# data/*.json
+# Los datos se subirán a GitHub porque son ligeros
