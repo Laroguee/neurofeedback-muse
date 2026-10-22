@@ -1,0 +1,36 @@
+{
+  "session_id": "sim-001",
+  "protocol_name": "Concentración / Foco Clínico",
+  "device": "Muse 2",
+  "channels": ["TP9", "AF7", "AF8", "TP10"],
+  "sampling_rate": 256,
+  "duration_seconds": 300,
+  "calibration_seconds": 30,
+  "deep_zone_factor": 1.25,
+  "bands": [
+    {
+      "name": "low_beta",
+      "display_name": "Beta Baja (12-15 Hz / SMR)",
+      "role": "reward",
+      "initial_threshold": 0.948,
+      "color": "#3B82F6",
+      "goal_direction": "higher_is_better"
+    },
+    {
+      "name": "theta",
+      "display_name": "Theta (4-8 Hz)",
+      "role": "inhibit",
+      "initial_threshold": 1.694,
+      "color": "#F59E0B",
+      "goal_direction": "lower_is_better"
+    },
+    {
+      "name": "high_beta",
+      "display_name": "Beta Alta (20-30 Hz)",
+      "role": "inhibit",
+      "initial_threshold": 0.811,
+      "color": "#EF4444",
+      "goal_direction": "lower_is_better"
+    }
+  ]
+}

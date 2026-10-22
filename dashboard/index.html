@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Resumen de Sesión · Neurofeedback Muse 2</title>
+  <meta name="description" content="Dashboard clínico post-sesión de neurofeedback con análisis de zonas de entrenamiento, umbrales adaptativos y métricas de rendimiento.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="mode-auto">
+  <div class="page-wrapper">
+    
+    <!-- Barra Superior Global (Selector de Vista para Desktop/Tablet/Móvil) -->
+    <aside class="view-mode-bar" aria-label="Selector de visualización">
+      <div class="view-mode-inner">
+        <div class="brand-chip">
+          <span class="brand-dot"></span>
+          <span class="brand-text"><strong>Muse 2</strong> Neurofeedback</span>
+        </div>
+        <div class="view-toggles" role="group" aria-label="Cambiar modo de vista">
+          <button class="view-toggle-btn active" data-mode="auto" id="btn-mode-auto" title="Adaptable a tu pantalla">
+            <svg viewBox="0 0 20 20" width="14" height="14" fill="currentColor"><path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/></svg>
+            Auto
+          </button>
+          <button class="view-toggle-btn" data-mode="desktop" id="btn-mode-desktop" title="Vista completa de escritorio (Monitor)">
+            <svg viewBox="0 0 20 20" width="14" height="14" fill="currentColor"><path fill-rule="evenodd" d="M3 5a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2h-2.22l.123.489.804.804A1 1 0 0113 18H7a1 1 0 01-.707-1.707l.804-.804L7.22 15H5a2 2 0 01-2-2V5zm2 0h10v8H5V5z" clip-rule="evenodd"/></svg>
+            Escritorio
+          </button>
+          <button class="view-toggle-btn" data-mode="tablet" id="btn-mode-tablet" title="Vista formato tableta (iPad)">
+            <svg viewBox="0 0 20 20" width="14" height="14" fill="currentColor"><path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V4a2 2 0 00-2-2H6zm4 14a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/></svg>
+            Tableta
+          </button>
+          <button class="view-toggle-btn" data-mode="mobile" id="btn-mode-mobile" title="Vista formato móvil de Muse (App)">
+            <svg viewBox="0 0 20 20" width="14" height="14" fill="currentColor"><path fill-rule="evenodd" d="M7 2a2 2 0 00-2 2v12a2 2 0 002 2h6a2 2 0 002-2V4a2 2 0 00-2-2H7zm3 14a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/></svg>
+            Móvil
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Contenedor Principal (App Frame adaptativo) -->
+    <main class="dashboard-shell" id="session-summary-app">
+      
+      <!-- Encabezado / Header -->
+      <header class="dashboard-header">
+        <div class="header-status-line">
+          <div class="status-left">
+            <span class="session-datetime" id="header-time">10:18 · 14 Oct 2026</span>
+            <span class="badge completed-badge"><span class="pulse-dot"></span> Sesión Finalizada</span>
+          </div>
+          <div class="status-right">
+            <div class="device-tag">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                <path d="M12 3C6.5 3 2 6.5 2 12c0 3.58 2.5 6.58 6 7.55v-2.13C5.54 16.5 4 14.48 4 12c0-4.41 3.59-8 8-8s8 3.59 8 8c0 2.48-1.54 4.5-4 5.42v2.13c3.5-.97 6-3.97 6-7.55 0-5.5-4.5-9-10-9z"/>
+              </svg>
+              <span>Muse 2 · 256 Hz · TP9, AF7, AF8, TP10</span>
+            </div>
+            <button class="info-circle-btn" id="open-info-modal" aria-label="Ayuda del protocolo" title="Información sobre zonas y umbrales">?</button>
+          </div>
+        </div>
+
+        <div class="header-main-title">
+          <div class="title-details">
+            <span class="protocol-kicker" id="protocol-badge">Protocolo de Foco Clínico · SMR</span>
+            <h1 class="session-heading" id="session-id-display">Sesión sim-001</h1>
+          </div>
+          <div class="session-quick-stats">
+            <div class="quick-stat">
+              <span class="stat-label">Duración</span>
+              <span class="stat-value">5 min (300 s)</span>
+            </div>
+            <div class="quick-stat">
+              <span class="stat-label">Frecuencia Muestreo</span>
+              <span class="stat-value">1 Hz por banda</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Selector de Bandas con Pills interactivas -->
+        <nav class="band-navigation" aria-label="Selección de banda cerebral" id="band-nav">
+          <!-- Generado dinámicamente: Low Beta (SMR), Theta, High Beta -->
+        </nav>
+      </header>
+
+      <!-- Layout de 2 Columnas en Desktop / Flujo Vertical en Móvil -->
+      <div class="dashboard-body-grid">
+        
+        <!-- Columna Izquierda / Principal: Gráfico y Curva Temporal -->
+        <section class="main-chart-column" aria-label="Visualización de zonas cerebrales">
+          
+          <div class="chart-card">
+            <!-- Barra de controles sobre la gráfica -->
+            <div class="chart-toolbar">
+              <div class="band-meta-info">
+                <span class="role-pill" id="band-role-indicator">Reward</span>
+                <span class="band-description-text" id="band-description-text">Beta Baja (12-15 Hz) · Aumentar concentración</span>
+              </div>
+              
+              <div class="chart-action-toggles">
+                <div class="toggle-container" id="inhibit-flip-control">
+                  <label class="switch" title="Invertir el eje para que arriba siempre signifique éxito">
+                    <input type="checkbox" id="invert-axis-toggle" checked>
+                    <span class="slider round"></span>
+                  </label>
+                  <span class="toggle-text" id="invert-axis-label">Arriba = Meta</span>
+                </div>
+                <div class="current-threshold-indicator">
+                  Umbral: <strong id="thresh-val">0.948 → 1.020 µV</strong>
+                </div>
+              </div>
+            </div>
+
+            <!-- Leyenda de colores de zona -->
+            <div class="chart-legend-row">
+              <span class="legend-chip deep"><span class="chip-dot deep"></span> Deep Zone (&gt;1.25×)</span>
+              <span class="legend-chip zone"><span class="chip-dot zone"></span> Zone (En umbral)</span>
+              <span class="legend-chip neutral"><span class="chip-dot neutral"></span> Neutral</span>
+              <span class="legend-chip artifact"><span class="chip-dot artifact"></span> Artefacto / Ruido</span>
+            </div>
+
+            <!-- Contenedor del Canvas Interactivo con Soporte DPI y Touch -->
+            <div class="canvas-responsive-container" id="canvas-container">
+              <canvas id="neuro-canvas"></canvas>
+              
+              <!-- Tooltip Flotante de Alta Precisión -->
+              <div class="canvas-tooltip" id="canvas-tooltip" role="tooltip">
+                <div class="tooltip-time" id="tooltip-time">02:15</div>
+                <div class="tooltip-data-row">
+                  <span class="tooltip-label">Amplitud:</span>
+                  <span class="tooltip-val" id="tooltip-val">1.082 µV</span>
+                </div>
+                <div class="tooltip-data-row">
+                  <span class="tooltip-label">Umbral:</span>
+                  <span class="tooltip-val" id="tooltip-thresh">0.948 µV</span>
+                </div>
+                <div class="tooltip-badge" id="tooltip-state">Deep Zone</div>
+              </div>
+            </div>
+
+            <!-- Eje X de Tiempo -->
+            <div class="time-axis-markers" id="time-axis-container">
+              <span>00:00</span>
+              <span>01:00</span>
+              <span>02:00</span>
+              <span>03:00</span>
+              <span>04:00</span>
+              <span>05:00</span>
+            </div>
+          </div>
+
+          <!-- Desglose Minuto a Minuto (Nivel Clínico) -->
+          <div class="minutes-breakdown-card">
+            <div class="card-mini-header">
+              <h3>Rendimiento Minuto a Minuto</h3>
+              <span class="card-hint">Porcentaje de tiempo en zona por bloque de 60s</span>
+            </div>
+            <div class="minutes-bar-grid" id="minutes-progress-grid">
+              <!-- Generado dinámicamente: Min 1, Min 2, Min 3, Min 4, Min 5 -->
+            </div>
+          </div>
+
+        </section>
+
+        <!-- Columna Derecha / Lateral: 6 Tarjetas de Métricas de Muse + Acciones -->
+        <aside class="sidebar-metrics-column" aria-label="Resumen de métricas y diagnóstico">
+          
+          <!-- Grid 3x2 de Métricas (Idéntico a la App de Muse) -->
+          <div class="metrics-grid">
+            
+            <!-- Tarjeta 1: Total zone -->
+            <div class="metric-card zone-card" id="card-total-zone">
+              <div class="metric-card-top">
+                <span class="metric-card-title">Total zone</span>
+                <span class="metric-tag">Meta: &gt;50%</span>
+              </div>
+              <div class="metric-card-value text-green" id="metric-total-zone">--%</div>
+              <div class="metric-card-footer" id="metric-total-zone-sub">0s en zona</div>
+            </div>
+
+            <!-- Tarjeta 2: Deep zone -->
+            <div class="metric-card deep-card" id="card-deep-zone">
+              <div class="metric-card-top">
+                <span class="metric-card-title">Deep zone</span>
+                <span class="metric-tag">Factor 1.25×</span>
+              </div>
+              <div class="metric-card-value text-cyan" id="metric-deep-zone">--%</div>
+              <div class="metric-card-footer" id="metric-deep-zone-sub">0s en zona profunda</div>
+            </div>
+
+            <!-- Tarjeta 3: Feedback score -->
+            <div class="metric-card score-card" id="card-feedback-score">
+              <div class="metric-card-top">
+                <span class="metric-card-title">Feedback score</span>
+                <span class="metric-tag">Puntos</span>
+              </div>
+              <div class="metric-card-value text-white" id="metric-feedback-score">-- pts</div>
+              <div class="metric-card-footer" id="metric-feedback-score-sub">Estabilidad sostenida</div>
+            </div>
+
+            <!-- Tarjeta 4: Avg streaks -->
+            <div class="metric-card streak-card" id="card-avg-streaks">
+              <div class="metric-card-top">
+                <span class="metric-card-title">Avg streaks</span>
+                <span class="metric-tag">Promedio</span>
+              </div>
+              <div class="metric-card-value text-pink" id="metric-avg-streaks">-- sec</div>
+              <div class="metric-card-footer" id="metric-avg-streaks-sub">-- rachas continuas</div>
+            </div>
+
+            <!-- Tarjeta 5: Max streaks -->
+            <div class="metric-card max-streak-card" id="card-max-streaks">
+              <div class="metric-card-top">
+                <span class="metric-card-title">Max streaks</span>
+                <span class="metric-tag">Récord</span>
+              </div>
+              <div class="metric-card-value text-purple" id="metric-max-streaks">-- sec</div>
+              <div class="metric-card-footer" id="metric-max-streaks-sub">Concentración continua</div>
+            </div>
+
+            <!-- Tarjeta 6: XP -->
+            <div class="metric-card xp-card" id="card-xp">
+              <div class="metric-card-top">
+                <span class="metric-card-title">XP Ganado</span>
+                <span class="metric-tag">+Progreso</span>
+              </div>
+              <div class="metric-card-value text-white" id="metric-xp">--</div>
+              <div class="metric-card-footer" id="metric-xp-sub">Gamificación</div>
+            </div>
+          </div>
+
+          <!-- Diagnóstico Clínico Sintetizado -->
+          <div class="clinical-summary-box">
+            <div class="clinical-box-header">
+              <h3>Diagnóstico Clínico</h3>
+              <span class="clinical-badge">Evaluación</span>
+            </div>
+            <div class="clinical-items-grid">
+              <div class="clinical-item">
+                <span class="item-label">Tendencia de la Banda</span>
+                <span class="item-value" id="clinical-trend">--</span>
+                <span class="item-desc">Regresión de 5 min</span>
+              </div>
+              <div class="clinical-item">
+                <span class="item-label">Mejor Minuto</span>
+                <span class="item-value text-green" id="clinical-best-min">--</span>
+                <span class="item-desc">Mayor estabilidad</span>
+              </div>
+              <div class="clinical-item">
+                <span class="item-label">Calidad / Artefactos</span>
+                <span class="item-value text-amber" id="clinical-artifacts">--</span>
+                <span class="item-desc">Movimiento / Parpadeos</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Acciones Principales -->
+          <div class="actions-panel">
+            <button class="btn btn-primary" id="btn-complete-session">
+              <svg viewBox="0 0 20 20" width="18" height="18" fill="currentColor">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+              </svg>
+              Complete session
+            </button>
+            <div class="actions-row">
+              <label class="btn btn-secondary file-upload-btn" id="upload-csv-label">
+                <svg viewBox="0 0 20 20" width="16" height="16" fill="currentColor">
+                  <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+                </svg>
+                Cargar CSV
+                <input type="file" id="csv-file-input" accept=".csv" style="display:none">
+              </label>
+              <button class="btn btn-secondary" id="btn-export-summary">
+                <svg viewBox="0 0 20 20" width="16" height="16" fill="currentColor">
+                  <path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm5 6a1 1 0 10-2 0v3.586l-1.293-1.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V8z" clip-rule="evenodd"/>
+                </svg>
+                Exportar JSON
+              </button>
+            </div>
+          </div>
+
+        </aside>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal de Información Técnica y Clínica -->
+  <div class="modal-backdrop" id="info-modal" style="display:none">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h2>Arquitectura de Entrenamiento y Zonas</h2>
+        <button class="close-modal-btn" id="close-info-modal" aria-label="Cerrar modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>Este informe post-sesión sintetiza los 5 minutos de entrenamiento adquiridos con <strong>Muse 2</strong> a 1 muestra por segundo (1 Hz) por banda.</p>
+        
+        <div class="info-card">
+          <h4>Zonas Visuales</h4>
+          <ul>
+            <li><strong>Neutral (Gris):</strong> Actividad por fuera del umbral clínico objetivo, o durante el período de calibración inicial (primeros 30s).</li>
+            <li><strong>Zone (Verde):</strong> El paciente cumplió el umbral objetivo (<code>success = 1</code>).</li>
+            <li><strong>Deep Zone (Azul/Violeta):</strong> Superó el umbral con holgura por un factor de <code>1.25×</code>.</li>
+          </ul>
+        </div>
+
+        <div class="info-card">
+          <h4>Dinámica Reward vs Inhibit</h4>
+          <ul>
+            <li><strong>Reward (Beta Baja / SMR):</strong> La meta es aumentar la potencia. Valor superior al umbral = Éxito.</li>
+            <li><strong>Inhibit (Theta, Beta Alta):</strong> La meta es reducir somnolencia o tensión muscular. Valor inferior al umbral = Éxito. El conmutador <em>"Arriba = Meta"</em> invierte visualmente el gráfico para que la zona verde quede siempre en la parte superior.</li>
+          </ul>
+        </div>
+
+        <div class="info-card">
+          <h4>Manejo de Artefactos</h4>
+          <p>Los parpadeos o movimientos musculares generan <code>valid = 0</code>. Se muestran como huecos limpios en la línea y no penalizan el cálculo de porcentajes ni rachas.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="dataset.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
