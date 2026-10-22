@@ -22,7 +22,10 @@
   const BAND_CONFIG = {
     low_beta: { displayName: 'Beta Baja (SMR)', freq: '12-15 Hz', desc: 'Foco sostenido y tranquilidad mental', role: 'reward' },
     theta: { displayName: 'Theta', freq: '4-8 Hz', desc: 'Inhibir somnolencia y mente errante', role: 'inhibit' },
-    high_beta: { displayName: 'Beta Alta', freq: '20-30 Hz', desc: 'Inhibir tensión muscular y rumiación', role: 'inhibit' }
+    high_beta: { displayName: 'Beta Alta', freq: '20-30 Hz', desc: 'Inhibir tensión muscular y rumiación', role: 'inhibit' },
+    alpha: { displayName: 'Alfa', freq: '8-12 Hz', desc: 'Relajación consciente y calma alerta', role: 'reward' },
+    beta: { displayName: 'Beta', freq: '15-20 Hz', desc: 'Atención activa y procesamiento cognitivo', role: 'reward' },
+    delta: { displayName: 'Delta', freq: '0.5-4 Hz', desc: 'Inhibir desconexión o somnolencia', role: 'inhibit' }
   };
 
   // Elementos DOM
@@ -44,6 +47,7 @@
   function init() {
     setupViewModeSwitcher();
     setupEventListeners();
+    setupDragAndDrop();
     setupResizeObserver();
     loadDefaultData();
   }
@@ -99,7 +103,8 @@
     });
 
     // Carga de archivo CSV
-    document.getElementById('csv-file-input').addEventListener('change', handleFileUpload);
+    const fileInput = document.getElementById('csv-file-input');
+    fileInput.addEventListener('change', handleFileUpload);
 
     // Modal
     const infoModal = document.getElementById('info-modal');
@@ -118,6 +123,34 @@
       alert(`✅ Sesión ${metadata.session_id} archivada correctamente.\nMétricas y tendencias sincronizadas.`);
     });
     document.getElementById('btn-export-summary').addEventListener('click', exportSummaryJSON);
+  }
+
+  function setupDragAndDrop() {
+    window.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      document.body.style.opacity = '0.92';
+    });
+
+    window.addEventListener('dragleave', (e) => {
+      if (e.clientX === 0 || e.clientY === 0) {
+        document.body.style.opacity = '1';
+      }
+    });
+
+    window.addEventListener('drop', (e) => {
+      e.preventDefault();
+      document.body.style.opacity = '1';
+      if (e.dataTransfer && e.dataTransfer.files.length > 0) {
+        const file = e.dataTransfer.files[0];
+        if (file.name.toLowerCase().endsWith('.csv')) {
+          const reader = new FileReader();
+          reader.onload = (event) => parseCSV(event.target.result);
+          reader.readAsText(file);
+        } else {
+          alert("Por favor arrastra un archivo con extensión .csv");
+        }
+      }
+    });
   }
 
   function setupResizeObserver() {
@@ -150,32 +183,66 @@
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (event) => parseCSV(event.target.result);
+    reader.onload = (event) => {
+      parseCSV(event.target.result);
+      e.target.value = ''; // Permite recargar el mismo archivo si se modifica
+    };
     reader.readAsText(file);
   }
 
   function parseCSV(csvText) {
     const lines = csvText.trim().split(/\r?\n/);
-    if (lines.length < 2) return;
+    if (lines.length < 2) {
+      alert("El archivo CSV no contiene suficientes datos.");
+      return;
+    }
     
-    const headers = lines[0].split(',').map(h => h.trim());
+    // Mapeo dinámico de encabezados insensible a mayúsculas y espacios
+    const rawHeaders = lines[0].split(',').map(h => h.trim().toLowerCase());
+    const col = {};
+    rawHeaders.forEach((h, idx) => {
+      col[h] = idx;
+    });
+
+    // Validar columnas esenciales
+    const hasRequired = ['t_s', 'band', 'value'].every(key => key in col);
+    if (!hasRequired) {
+      alert("El CSV debe incluir al menos las columnas: t_s, band, value");
+      return;
+    }
+
     const parsed = [];
 
     for (let i = 1; i < lines.length; i++) {
       const parts = lines[i].split(',');
-      if (parts.length < headers.length) continue;
+      if (parts.length < rawHeaders.length) continue;
       
+      const tsVal = parts[col['t_s']] !== undefined ? parseInt(parts[col['t_s']]) : i - 1;
+      const bandVal = parts[col['band']]?.trim();
+      if (!bandVal || isNaN(tsVal)) continue;
+
+      const rawVal = parts[col['value']]?.trim();
+      const rawThresh = col['threshold'] !== undefined ? parts[col['threshold']]?.trim() : '';
+      const rawSuccess = col['success'] !== undefined ? parts[col['success']]?.trim() : '';
+      const rawValid = col['valid'] !== undefined ? parts[col['valid']]?.trim() : '1';
+      const rawRole = col['role'] !== undefined ? parts[col['role']]?.trim().toLowerCase() : null;
+
       parsed.push({
-        session_id: parts[0]?.trim(),
-        t_s: parseInt(parts[1]),
-        timestamp: parts[2]?.trim(),
-        band: parts[3]?.trim(),
-        role: parts[4]?.trim(),
-        value: parts[5] !== '' && parts[5] !== undefined ? parseFloat(parts[5]) : null,
-        valid: parseInt(parts[6]),
-        threshold: parts[7] !== '' && parts[7] !== undefined ? parseFloat(parts[7]) : null,
-        success: parts[8] !== '' && parts[8] !== undefined ? parseInt(parts[8]) : null
+        session_id: (col['session_id'] !== undefined ? parts[col['session_id']]?.trim() : '') || 'sesion',
+        t_s: tsVal,
+        timestamp: (col['timestamp'] !== undefined ? parts[col['timestamp']]?.trim() : '') || '',
+        band: bandVal,
+        role: rawRole || (BAND_CONFIG[bandVal]?.role || 'reward'),
+        value: rawVal !== '' && rawVal !== undefined ? parseFloat(rawVal) : null,
+        valid: rawValid !== '' && rawValid !== undefined ? parseInt(rawValid) : 1,
+        threshold: rawThresh !== '' && rawThresh !== undefined ? parseFloat(rawThresh) : null,
+        success: rawSuccess !== '' && rawSuccess !== undefined ? parseInt(rawSuccess) : null
       });
+    }
+
+    if (!parsed.length) {
+      alert("No se pudieron extraer filas válidas del CSV.");
+      return;
     }
 
     rawData = parsed;
@@ -183,6 +250,11 @@
 
     if (parsed[0]?.session_id) {
       document.getElementById('session-id-display').textContent = `Sesión ${parsed[0].session_id}`;
+    }
+
+    // Si la banda actual no está en el nuevo CSV, seleccionamos la primera disponible
+    if (!availableBands.includes(currentBand)) {
+      currentBand = availableBands[0];
     }
 
     renderBandTabs();
