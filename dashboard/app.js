@@ -49,7 +49,7 @@
     setupEventListeners();
     setupDragAndDrop();
     setupResizeObserver();
-    loadDefaultData();
+    showEmptyState();
   }
 
   // Selector de Modo de Vista (Desktop, Tablet, Mobile, Auto)
@@ -62,10 +62,12 @@
         toggleBtns.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         
-        // Redimensionar canvas tras cambio de layout
+        // Redimensionar canvas tras cambio de layout si hay datos
         setTimeout(() => {
-          resizeCanvas();
-          renderCurrentBand();
+          if (rawData.length > 0) {
+            resizeCanvas();
+            renderCurrentBand();
+          }
         }, 150);
       });
     });
@@ -74,37 +76,51 @@
   function setupEventListeners() {
     invertAxisToggle.addEventListener('change', (e) => {
       invertAxisForInhibit = e.target.checked;
-      renderCurrentBand();
+      if (rawData.length > 0) renderCurrentBand();
     });
 
     // Puntero ratón en canvas
-    canvas.addEventListener('mousemove', (e) => handlePointer(e.clientX, e.clientY));
+    canvas.addEventListener('mousemove', (e) => {
+      if (rawData.length > 0) handlePointer(e.clientX, e.clientY);
+    });
     canvas.addEventListener('mouseleave', () => {
       canvasTooltip.style.display = 'none';
-      renderCurrentBand();
+      if (rawData.length > 0) renderCurrentBand();
     });
 
     // Soporte táctil para móviles y tabletas
     canvas.addEventListener('touchstart', (e) => {
-      if (e.touches.length > 0) {
+      if (rawData.length > 0 && e.touches.length > 0) {
         handlePointer(e.touches[0].clientX, e.touches[0].clientY);
       }
     }, { passive: true });
 
     canvas.addEventListener('touchmove', (e) => {
-      if (e.touches.length > 0) {
+      if (rawData.length > 0 && e.touches.length > 0) {
         handlePointer(e.touches[0].clientX, e.touches[0].clientY);
       }
     }, { passive: true });
 
     canvas.addEventListener('touchend', () => {
       canvasTooltip.style.display = 'none';
-      renderCurrentBand();
+      if (rawData.length > 0) renderCurrentBand();
     });
 
-    // Carga de archivo CSV
-    const fileInput = document.getElementById('csv-file-input');
-    fileInput.addEventListener('change', handleFileUpload);
+    // Carga de archivo CSV desde múltiples orígenes (Dropzone, Header, Sidebar)
+    const fileInputs = [
+      document.getElementById('csv-file-input'),
+      document.getElementById('hero-csv-input'),
+      document.getElementById('header-csv-file-input')
+    ];
+    fileInputs.forEach(input => {
+      if (input) input.addEventListener('change', handleFileUpload);
+    });
+
+    // Botón de sesión de demostración opcional
+    const demoBtn = document.getElementById('btn-load-demo');
+    if (demoBtn) {
+      demoBtn.addEventListener('click', loadDemoData);
+    }
 
     // Modal
     const infoModal = document.getElementById('info-modal');
@@ -120,26 +136,36 @@
 
     // Acciones
     document.getElementById('btn-complete-session').addEventListener('click', () => {
+      if (!rawData.length) {
+        alert("Por favor carga un archivo CSV de sesión primero.");
+        return;
+      }
       alert(`✅ Sesión ${metadata.session_id} archivada correctamente.\nMétricas y tendencias sincronizadas.`);
     });
     document.getElementById('btn-export-summary').addEventListener('click', exportSummaryJSON);
   }
 
   function setupDragAndDrop() {
+    const dropzoneBox = document.getElementById('dropzone-box');
+
     window.addEventListener('dragover', (e) => {
       e.preventDefault();
-      document.body.style.opacity = '0.92';
+      document.body.classList.add('drag-active');
+      if (dropzoneBox) dropzoneBox.classList.add('drag-hover');
     });
 
     window.addEventListener('dragleave', (e) => {
       if (e.clientX === 0 || e.clientY === 0) {
-        document.body.style.opacity = '1';
+        document.body.classList.remove('drag-active');
+        if (dropzoneBox) dropzoneBox.classList.remove('drag-hover');
       }
     });
 
     window.addEventListener('drop', (e) => {
       e.preventDefault();
-      document.body.style.opacity = '1';
+      document.body.classList.remove('drag-active');
+      if (dropzoneBox) dropzoneBox.classList.remove('drag-hover');
+
       if (e.dataTransfer && e.dataTransfer.files.length > 0) {
         const file = e.dataTransfer.files[0];
         if (file.name.toLowerCase().endsWith('.csv')) {
@@ -156,26 +182,80 @@
   function setupResizeObserver() {
     if (window.ResizeObserver && canvasContainer) {
       const ro = new ResizeObserver(() => {
-        resizeCanvas();
-        renderCurrentBand();
+        if (rawData.length > 0) {
+          resizeCanvas();
+          renderCurrentBand();
+        }
       });
       ro.observe(canvasContainer);
     } else {
       window.addEventListener('resize', () => {
-        resizeCanvas();
-        renderCurrentBand();
+        if (rawData.length > 0) {
+          resizeCanvas();
+          renderCurrentBand();
+        }
       });
     }
   }
 
-  function loadDefaultData() {
+  function showEmptyState() {
+    rawData = [];
+    availableBands = [];
+    currentMetrics = null;
+
+    const emptyState = document.getElementById('empty-state-view');
+    const dashboardGrid = document.getElementById('dashboard-body-grid');
+    const headerUploadLabel = document.getElementById('header-upload-label');
+    const bandNav = document.getElementById('band-nav');
+
+    if (emptyState) emptyState.style.display = 'flex';
+    if (dashboardGrid) dashboardGrid.style.display = 'none';
+    if (headerUploadLabel) headerUploadLabel.style.display = 'none';
+    if (bandNav) bandNav.style.display = 'none';
+
+    document.getElementById('header-time').textContent = 'Esperando archivo .csv';
+    const statusBadge = document.getElementById('header-status-badge');
+    if (statusBadge) {
+      statusBadge.className = 'badge waiting-badge';
+      statusBadge.innerHTML = '<span class="pulse-dot amber"></span> Esperando datos';
+    }
+    document.getElementById('protocol-badge').textContent = 'Dashboard de Análisis Clínico';
+    document.getElementById('session-id-display').textContent = 'Carga de Sesión';
+    const durationEl = document.getElementById('quick-duration');
+    if (durationEl) durationEl.textContent = '--';
+  }
+
+  function hideEmptyState() {
+    const emptyState = document.getElementById('empty-state-view');
+    const dashboardGrid = document.getElementById('dashboard-body-grid');
+    const headerUploadLabel = document.getElementById('header-upload-label');
+    const bandNav = document.getElementById('band-nav');
+
+    if (emptyState) emptyState.style.display = 'none';
+    if (dashboardGrid) {
+      dashboardGrid.style.display = 'grid';
+      dashboardGrid.classList.remove('fade-in');
+      void dashboardGrid.offsetWidth; // Forzar reflow para animación
+      dashboardGrid.classList.add('fade-in');
+    }
+    if (headerUploadLabel) headerUploadLabel.style.display = 'inline-flex';
+    if (bandNav) bandNav.style.display = 'flex';
+
+    const statusBadge = document.getElementById('header-status-badge');
+    if (statusBadge) {
+      statusBadge.className = 'badge completed-badge';
+      statusBadge.innerHTML = '<span class="pulse-dot"></span> Sesión Finalizada';
+    }
+  }
+
+  function loadDemoData() {
     if (window.DEFAULT_CSV_RAW) {
       parseCSV(window.DEFAULT_CSV_RAW);
     } else {
       fetch('../data/sesion_simulada.csv')
         .then(res => res.text())
         .then(csv => parseCSV(csv))
-        .catch(err => console.error("Error al cargar CSV:", err));
+        .catch(err => alert("No se pudo cargar la sesión de prueba simulada: " + err));
     }
   }
 
@@ -197,8 +277,17 @@
       return;
     }
     
-    // Mapeo dinámico de encabezados insensible a mayúsculas y espacios
-    const rawHeaders = lines[0].split(',').map(h => h.trim().toLowerCase());
+    // Autodetección de delimitador: coma, punto y coma o tabulación
+    const firstLine = lines[0];
+    let delimiter = ',';
+    if (firstLine.includes(';') && !firstLine.includes(',')) {
+      delimiter = ';';
+    } else if (firstLine.includes('\t') && !firstLine.includes(',')) {
+      delimiter = '\t';
+    }
+
+    // Mapeo dinámico de encabezados insensible a mayúsculas, comillas y espacios
+    const rawHeaders = firstLine.split(delimiter).map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
     const col = {};
     rawHeaders.forEach((h, idx) => {
       col[h] = idx;
@@ -207,30 +296,34 @@
     // Validar columnas esenciales
     const hasRequired = ['t_s', 'band', 'value'].every(key => key in col);
     if (!hasRequired) {
-      alert("El CSV debe incluir al menos las columnas: t_s, band, value");
+      alert("El CSV debe incluir al menos las columnas obligatorias: t_s, band, value\nColumnas detectadas: " + rawHeaders.join(', '));
       return;
     }
 
     const parsed = [];
 
     for (let i = 1; i < lines.length; i++) {
-      const parts = lines[i].split(',');
+      const lineStr = lines[i].trim();
+      if (!lineStr) continue;
+
+      const parts = lineStr.split(delimiter);
       if (parts.length < rawHeaders.length) continue;
       
-      const tsVal = parts[col['t_s']] !== undefined ? parseInt(parts[col['t_s']]) : i - 1;
-      const bandVal = parts[col['band']]?.trim();
+      const tsRaw = parts[col['t_s']] !== undefined ? parts[col['t_s']].trim().replace(/['"]/g, '') : '';
+      const tsVal = tsRaw !== '' ? parseInt(tsRaw) : i - 1;
+      const bandVal = parts[col['band']]?.trim().replace(/['"]/g, '');
       if (!bandVal || isNaN(tsVal)) continue;
 
-      const rawVal = parts[col['value']]?.trim();
-      const rawThresh = col['threshold'] !== undefined ? parts[col['threshold']]?.trim() : '';
-      const rawSuccess = col['success'] !== undefined ? parts[col['success']]?.trim() : '';
-      const rawValid = col['valid'] !== undefined ? parts[col['valid']]?.trim() : '1';
-      const rawRole = col['role'] !== undefined ? parts[col['role']]?.trim().toLowerCase() : null;
+      const rawVal = parts[col['value']]?.trim().replace(/['"]/g, '');
+      const rawThresh = col['threshold'] !== undefined ? parts[col['threshold']]?.trim().replace(/['"]/g, '') : '';
+      const rawSuccess = col['success'] !== undefined ? parts[col['success']]?.trim().replace(/['"]/g, '') : '';
+      const rawValid = col['valid'] !== undefined ? parts[col['valid']]?.trim().replace(/['"]/g, '') : '1';
+      const rawRole = col['role'] !== undefined ? parts[col['role']]?.trim().toLowerCase().replace(/['"]/g, '') : null;
 
       parsed.push({
-        session_id: (col['session_id'] !== undefined ? parts[col['session_id']]?.trim() : '') || 'sesion',
+        session_id: (col['session_id'] !== undefined ? parts[col['session_id']]?.trim().replace(/['"]/g, '') : '') || 'sesion',
         t_s: tsVal,
-        timestamp: (col['timestamp'] !== undefined ? parts[col['timestamp']]?.trim() : '') || '',
+        timestamp: (col['timestamp'] !== undefined ? parts[col['timestamp']]?.trim().replace(/['"]/g, '') : '') || '',
         band: bandVal,
         role: rawRole || (BAND_CONFIG[bandVal]?.role || 'reward'),
         value: rawVal !== '' && rawVal !== undefined ? parseFloat(rawVal) : null,
@@ -248,8 +341,50 @@
     rawData = parsed;
     availableBands = [...new Set(parsed.map(r => r.band))];
 
+    // Actualizar metadatos y encabezados
     if (parsed[0]?.session_id) {
+      metadata.session_id = parsed[0].session_id;
       document.getElementById('session-id-display').textContent = `Sesión ${parsed[0].session_id}`;
+    }
+
+    // Duración de la sesión
+    const maxT = Math.max(...parsed.map(r => r.t_s || 0));
+    const durationSec = maxT + 1;
+    const mins = Math.floor(durationSec / 60);
+    const secs = durationSec % 60;
+    const durationFormatted = mins > 0 ? `${mins} min ${secs > 0 ? secs + ' s' : ''} (${durationSec} s)` : `${durationSec} s`;
+    const durationEl = document.getElementById('quick-duration');
+    if (durationEl) durationEl.textContent = durationFormatted;
+
+    // Formatear Fecha/Hora si está disponible
+    if (parsed[0]?.timestamp) {
+      try {
+        const d = new Date(parsed[0].timestamp);
+        if (!isNaN(d.getTime())) {
+          const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          const dateStr = d.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
+          document.getElementById('header-time').textContent = `${timeStr} · ${dateStr}`;
+        } else {
+          document.getElementById('header-time').textContent = parsed[0].timestamp;
+        }
+      } catch (e) {
+        document.getElementById('header-time').textContent = parsed[0].timestamp;
+      }
+    } else {
+      const now = new Date();
+      document.getElementById('header-time').textContent = `${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · ${now.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}`;
+    }
+
+    // Protocolo según bandas detectadas
+    const protocolBadge = document.getElementById('protocol-badge');
+    if (protocolBadge) {
+      if (availableBands.includes('low_beta')) {
+        protocolBadge.textContent = 'Protocolo de Foco Clínico · SMR';
+      } else if (availableBands.includes('alpha')) {
+        protocolBadge.textContent = 'Protocolo de Relajación Consciente · Alfa';
+      } else {
+        protocolBadge.textContent = 'Protocolo EEG Muse 2';
+      }
     }
 
     // Si la banda actual no está en el nuevo CSV, seleccionamos la primera disponible
@@ -257,9 +392,34 @@
       currentBand = availableBands[0];
     }
 
+    // Revelar interfaz de dashboard
+    hideEmptyState();
+
+    renderTimeAxisMarkers(durationSec);
     renderBandTabs();
     resizeCanvas();
     renderCurrentBand();
+  }
+
+  function renderTimeAxisMarkers(durationSec) {
+    const container = document.getElementById('time-axis-container');
+    if (!container) return;
+    container.innerHTML = '';
+    
+    // Elegir intervalo de marcas según la longitud de la sesión
+    let step = 60;
+    if (durationSec <= 45) step = 10;
+    else if (durationSec <= 120) step = 20;
+    else if (durationSec <= 360) step = 60;
+    else step = 120;
+    
+    for (let t = 0; t <= durationSec; t += step) {
+      const m = Math.floor(t / 60);
+      const s = t % 60;
+      const span = document.createElement('span');
+      span.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+      container.appendChild(span);
+    }
   }
 
   function renderBandTabs() {
@@ -776,6 +936,11 @@
   }
 
   function exportSummaryJSON() {
+    if (!rawData.length) {
+      alert("Por favor carga un archivo CSV de sesión antes de exportar.");
+      return;
+    }
+
     const summary = {
       exported_at: new Date().toISOString(),
       metadata,
