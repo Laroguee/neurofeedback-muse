@@ -1,0 +1,52 @@
+{
+  "session_id": "004",
+  "usuario_id": "001",
+  "simulated": false,
+  "protocol_name": "Pruebas",
+  "protocolo_codigo": "pruebas",
+  "device": "muse_2",
+  "firmware_version": "1.0.27",
+  "active_electrode": "AF7",
+  "reference_electrode": "TP9",
+  "bands": [
+    {
+      "band": "low_alpha",
+      "role": "reward"
+    },
+    {
+      "band": "high_beta",
+      "role": "inhibit"
+    }
+  ],
+  "start_time": "2026-10-27T21:28:05-06:00",
+  "end_time": "2026-10-27T21:32:20-06:00",
+  "target_duration_s": 240,
+  "duration_s": 255,
+  "valid_s": 209,
+  "valid_pct": 82.0,
+  "signal_quality_flag": "ok",
+  "invalid_seconds_by_reason": {
+    "pico AF7": 4,
+    "pico TP9": 37,
+    "delta": 5
+  },
+  "band_ranges_hz": {
+    "low_alpha": [
+      8,
+      10
+    ],
+    "high_beta": [
+      21,
+      30
+    ]
+  },
+  "calibration_note": "Antes de esta sesión hubo una calibración (no incluida en estos datos); t_s=0 es el inicio del entrenamiento.",
+  "sample_rate_hz": 1,
+  "value_description": "Amplitud de la banda (raiz de la PSD promedio, ~uV/sqrt(Hz)), suavizada con EMA alpha=0.5. No comparable entre personas sin normalizar.",
+  "success_rule": {
+    "reward": "value > threshold",
+    "inhibit": "value < threshold"
+  },
+  "time_note": "t_s cuenta solo el tiempo activo (sin pausas); timestamp es la hora real.",
+  "threshold_note": "Vacio durante la calibracion inicial (mediana de los primeros 30 s validos). El entrenador puede cambiarlo en cualquier momento."
+}

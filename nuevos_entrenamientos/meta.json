@@ -1,0 +1,62 @@
+{
+  "session_id": "005",
+  "usuario_id": "003",
+  "simulated": false,
+  "protocol_name": "Rob-Train",
+  "protocolo_codigo": "rob_train",
+  "device": "muse_2",
+  "firmware_version": "1.0.27",
+  "active_electrode": "AF8",
+  "reference_electrode": "TP9",
+  "bands": [
+    {
+      "band": "theta",
+      "role": "reward"
+    },
+    {
+      "band": "low_alpha",
+      "role": "reward"
+    },
+    {
+      "band": "high_beta",
+      "role": "inhibit"
+    }
+  ],
+  "start_time": "2026-10-27T23:17:11-06:00",
+  "end_time": "2026-10-27T23:22:54-06:00",
+  "target_duration_s": 300,
+  "duration_s": 343,
+  "valid_s": 256,
+  "valid_pct": 74.6,
+  "signal_quality_flag": "warning",
+  "invalid_seconds_by_reason": {
+    "pico TP9": 53,
+    "variabilidad AF8": 9,
+    "delta": 16,
+    "variabilidad TP9": 7,
+    "pico AF8": 2
+  },
+  "band_ranges_hz": {
+    "theta": [
+      4,
+      7
+    ],
+    "low_alpha": [
+      8,
+      10
+    ],
+    "high_beta": [
+      21,
+      30
+    ]
+  },
+  "calibration_note": "Antes de esta sesión hubo una calibración (no incluida en estos datos); t_s=0 es el inicio del entrenamiento.",
+  "sample_rate_hz": 1,
+  "value_description": "Amplitud de la banda (raiz de la PSD promedio, ~uV/sqrt(Hz)), suavizada con EMA alpha=0.5. No comparable entre personas sin normalizar.",
+  "success_rule": {
+    "reward": "value > threshold",
+    "inhibit": "value < threshold"
+  },
+  "time_note": "t_s cuenta solo el tiempo activo (sin pausas); timestamp es la hora real.",
+  "threshold_note": "Vacio durante la calibracion inicial (mediana de los primeros 30 s validos). El entrenador puede cambiarlo en cualquier momento."
+}
