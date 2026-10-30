@@ -1,0 +1,24 @@
+import time
+from brainflow.board_shim import BoardShim, BrainFlowInputParams, BoardIds
+
+BoardShim.enable_dev_board_logger()
+
+params = BrainFlowInputParams()
+params.mac_address = ""  
+params.timeout = 20
+
+board = BoardShim(BoardIds.MUSE_2_BOARD.value, params)
+
+print("Preparando sesión...")
+board.prepare_session()
+board.start_stream()
+print("Streaming iniciado, esperando datos...")
+
+time.sleep(10)  # captura 10 segundos
+data = board.get_board_data()
+
+board.stop_stream()
+board.release_session()
+
+print("Forma de los datos:", data.shape)
+print(data[:5])  # primeras 5 filas (canales)

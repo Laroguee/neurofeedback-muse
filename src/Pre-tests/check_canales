@@ -1,0 +1,38 @@
+import time
+from brainflow.board_shim import BoardShim, BrainFlowInputParams, BoardIds, BrainFlowPresets
+
+# Para Muse S Athena:
+board_id = BoardIds.MUSE_S_ATHENA_BOARD.value
+
+params = BrainFlowInputParams()
+params.timeout = 20
+# Si usas Muse 2, descomenta la siguiente línea:
+# params.other_info = "p21"
+
+board = BoardShim(board_id, params)
+board.prepare_session()
+board.start_stream()
+
+print("Capturando datos durante 5 segundos...")
+time.sleep(5)
+
+# Obtener los datos del buffer de EEG (DEFAULT_PRESET)
+data = board.get_board_data(preset=BrainFlowPresets.DEFAULT_PRESET)
+board.stop_stream()
+board.release_session()
+
+# Canales estándar
+eeg_channels = BoardShim.get_eeg_channels(board_id)
+other_channels = BoardShim.get_other_channels(board_id)
+
+print(f"Total de filas recibidas en la matriz: {data.shape[0]}")
+print(f"Índices de canales EEG estándar: {eeg_channels}")
+print(f"Índices de canales 'Other' (donde entra AUX/extra): {other_channels}")
+
+# Inspeccionar últimas lecturas de los canales estándar
+for i, ch in enumerate(eeg_channels):
+    print(f"EEG canal {i} (fila {ch}): últimos valores -> {data[ch, -5:]}")
+
+# Inspeccionar los canales adicionales / AUX
+for ch in other_channels:
+    print(f"Canal Extra/AUX (fila {ch}): últimos valores -> {data[ch, -5:]}")

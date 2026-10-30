@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Feedback · Neurofeedback</title>
+<style>
+  html, body { margin:0; height:100%; background:#05070d; overflow:hidden; touch-action:manipulation; }
+  canvas { position:fixed; inset:0; width:100%; height:100%; display:block; }
+  #msg { position:fixed; left:0; right:0; bottom:9%; text-align:center; color:#9fb3c8; font:300 20px/1.3 -apple-system,"Segoe UI",sans-serif;
+         letter-spacing:2px; opacity:0; transition:opacity 1.2s ease; pointer-events:none; }
+  #msg.on { opacity:.75; }
+  #debug { position:fixed; left:12px; top:10px; color:#6f8196; font:12px Consolas,monospace; display:none; white-space:pre; }
+  #start { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px;
+           background:#05070d; color:#cfe3f5; font:300 22px -apple-system,"Segoe UI",sans-serif; z-index:5; }
+  #start button { background:none; color:#cfe3f5; border:1px solid #3b5670; border-radius:999px; padding:16px 44px;
+                  font:400 20px -apple-system,"Segoe UI",sans-serif; letter-spacing:2px; cursor:pointer; }
+  #start small { color:#5f758b; font-size:14px; }
+  #controls { position:fixed; right:14px; bottom:12px; display:flex; gap:10px; align-items:center; opacity:0; transition:opacity .5s; z-index:4; }
+  #controls.show { opacity:.8; }
+  #controls button { background:#0d141d; color:#9fb3c8; border:1px solid #243445; border-radius:10px; width:44px; height:44px; font-size:18px; cursor:pointer; }
+  #controls input { width:110px; }
+  #vid { position:fixed; inset:0; width:100%; height:100%; object-fit:contain; background:#000; display:none; z-index:1; }
+  body.video #vid { display:block; }
+  body.video canvas { display:none; }
+  body.video #msg { z-index:2; bottom:4%; text-shadow:0 0 8px #000; }
+  #start .list { display:flex; flex-direction:column; gap:10px; max-width:90vw; max-height:55vh; overflow:auto; align-items:center; }
+  #start .list button { padding:12px 30px; font-size:17px; max-width:80vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+</style>
+</head>
+<body>
+<video id="vid" playsinline loop preload="auto"></video>
+<canvas id="c"></canvas>
+<div id="msg"></div>
+<div id="debug"></div>
+<div id="start">
+  <div>Pantalla de feedback</div>
+  <div class="list" id="choices"><button id="btn-go">Comenzar</button></div>
+  <small id="start-hint">Toca para activar el sonido y la pantalla completa</small>
+</div>
+<div id="controls">
+  <button id="btn-list" title="Cambiar video" style="display:none">🎞</button>
+  <button id="btn-mute" title="Sonido">🔊</button>
+  <input type="range" id="vol" min="0" max="100" value="70" aria-label="Volumen">
+  <button id="btn-full" title="Pantalla completa">⛶</button>
+</div>
+
+<script>
+/* Feedback abstracto (sin parpadeos): una esfera de luz que crece, se calienta y suena cuando
+   TODAS las bandas cumplen su umbral, y se apaga suavemente cuando no (se quita la recompensa).
+   - segundo inválido (artefacto): se mantiene igual, ni premio ni castigo
+   - todos los cambios son lentos (≥0.5 s) para evitar estímulos bruscos o parpadeo */
+const params = new URLSearchParams(location.search);
+const DEMO = params.has("demo");
+const DEBUG = params.has("debug");
+const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const $ = (id) => document.getElementById(id);
+const canvas = $("c"), ctx = canvas.getContext("2d"), vid = $("vid");
+
+// ---------- Estado de feedback ----------
+let state = "idle", met = 0, total = 0, lastMsg = 0, connected = false;
+let level = 0.25;                 // 0 = sin recompensa, 1 = recompensa plena (suavizado)
+const TARGET = { success: 1.0, fail: 0.12, calibrating: 0.35, idle: 0.25, nosignal: 0.1, offline: 0.1 };
+const TEXT = { idle: "Esperando sesión…", paused: "En pausa", invalid: "Ajustando señal…", calibrating: "Preparando…",
+               nosignal: "Reconectando…", offline: "Reconectando…" };
+
+function targetLevel() {
+  return state in TARGET ? TARGET[state] : level;   // 'paused' e 'invalid' mantienen el nivel actual
+}
+
+// ---------- Conexión ----------
+let ws = null;
+function connect() {
+  if (DEMO) return;
+  try { ws = new WebSocket(`ws://${location.hostname || "localhost"}:8765`); } catch (e) { return retry(); }
+  ws.onopen = () => { connected = true; ws.send(JSON.stringify({ type: "hello", role: "feedback" })); };
+  ws.onmessage = (ev) => {
+    let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+    if (m.type !== "feedback") return;
+    lastMsg = performance.now();
+    state = m.state; met = m.met; total = m.total;
+  };
+  ws.onclose = () => { connected = false; retry(); };
+  ws.onerror = () => { try { ws.close(); } catch (e) {} };
+}
+function retry() { setTimeout(connect, 1500); }
+connect();
+
+// ---------- Demo (sin servidor): ?demo=1 ----------
+const DEMO_STEPS = [["calibrating", 3], ["success", 8], ["fail", 6], ["success", 5], ["invalid", 3], ["fail", 4], ["paused", 3]];
+function demoState(t) {
+  const cycle = DEMO_STEPS.reduce((a, s) => a + s[1], 0);
+  let x = t % cycle;
+  for (const [name, dur] of DEMO_STEPS) { if (x < dur) return name; x -= dur; }
+  return "idle";
+}
+
+// ---------- Audio ----------
+let audio = null, muted = false, volume = 0.7, videoMode = false;
+function startAudio() {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC || audio) return;
+  const ac = new AC();
+  const master = ac.createGain(); master.gain.value = 0;
+  const filter = ac.createBiquadFilter(); filter.type = "lowpass"; filter.frequency.value = 400; filter.Q.value = 0.6;
+  filter.connect(master); master.connect(ac.destination);
+  const voices = [[196.0, "sine", 0.5], [293.66, "sine", 0.35], [392.0, "triangle", 0.18], [98.0, "sine", 0.3]];
+  voices.forEach(([f, type, g], i) => {
+    const o = ac.createOscillator(); o.type = type; o.frequency.value = f;
+    const og = ac.createGain(); og.gain.value = g;
+    const lfo = ac.createOscillator(); lfo.frequency.value = 0.12 + i * 0.05;     // vibrato muy lento
+    const lg = ac.createGain(); lg.gain.value = f * 0.003;
+    lfo.connect(lg); lg.connect(o.frequency);
+    o.connect(og); og.connect(filter);
+    o.start(); lfo.start();
+  });
+  const vgain = ac.createGain(); vgain.gain.value = 0; vgain.connect(ac.destination);   // volumen del video
+  audio = { ac, master, filter, vgain, vsrc: null };
+}
+// Video: el audio del video pasa por un GainNode (solo cambia el VOLUMEN; el brillo/imagen no se toca).
+// Si Web Audio no está disponible, se usa video.volume (no funciona en iOS, donde queda a volumen fijo).
+function videoGain() {
+  if (muted) return 0;
+  return volume * (0.03 + 0.97 * Math.pow(level, 1.6));
+}
+function updateAudio() {
+  if (!audio) return;
+  const now = audio.ac.currentTime;
+  if (videoMode) {
+    audio.master.gain.setTargetAtTime(0, now, 0.2);       // sin acorde cuando hay video
+    audio.vgain.gain.setTargetAtTime(videoGain(), now, 0.25);
+    return;
+  }
+  const g = muted ? 0 : Math.pow(level, 1.6) * volume * 0.16;
+  audio.master.gain.setTargetAtTime(g, now, 0.2);
+  audio.filter.frequency.setTargetAtTime(300 + 1900 * level, now, 0.3);
+}
+
+// ---------- Dibujo ----------
+let W = 0, H = 0, dpr = 1;
+function resize() {
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  W = innerWidth; H = innerHeight;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+addEventListener("resize", resize); resize();
+
+const rnd = (() => { let s = 7; return () => (s = (s * 16807) % 2147483647) / 2147483647; })();
+const dust = Array.from({ length: 70 }, () => ({ x: rnd(), y: rnd(), r: 0.6 + rnd() * 1.6, sp: 0.01 + rnd() * 0.03, ph: rnd() * 6.28 }));
+
+const COOL = [64, 104, 168], WARM = [255, 214, 120], COOL_BG = [8, 12, 24], WARM_BG = [26, 22, 18];
+const mix = (a, b, k) => a.map((v, i) => Math.round(v + (b[i] - v) * k));
+const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+
+function draw(t) {
+  const m = Math.min(W, H), cx = W / 2, cy = H / 2;
+  ctx.clearRect(0, 0, W, H);
+  const body = mix(COOL, WARM, level), bright = mix([120, 160, 220], [255, 244, 210], level);
+
+  // fondo: se aclara y entibia apenas con la recompensa
+  const bg = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H) * 0.75);
+  bg.addColorStop(0, rgba(mix(COOL_BG, WARM_BG, level), 1));
+  bg.addColorStop(1, "rgb(4,6,12)");
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+
+  // polvo de luz
+  const drift = REDUCED ? 0 : 1;
+  for (const d of dust) {
+    const y = ((d.y - t * d.sp * drift) % 1 + 1) % 1;
+    const a = (0.10 + 0.5 * level) * (0.6 + 0.4 * Math.sin(t * 0.4 + d.ph));
+    ctx.fillStyle = rgba(bright, a);
+    ctx.beginPath(); ctx.arc(d.x * W, y * H, d.r, 0, 6.283); ctx.fill();
+  }
+
+  // anillos que se expanden despacio (solo con recompensa)
+  if (!REDUCED) {
+    for (let i = 0; i < 3; i++) {
+      const ph = ((t / 7) + i / 3) % 1;
+      const r = m * (0.14 + 0.38 * ph);
+      const a = Math.max(0, level - 0.25) * 0.45 * (1 - ph);
+      if (a <= 0.005) continue;
+      ctx.strokeStyle = rgba(body, a);
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, 6.283); ctx.stroke();
+    }
+  }
+
+  // esfera: crece, se calienta y brilla con el nivel
+  const breath = REDUCED ? 0 : Math.sin(t * 2 * Math.PI / 6) * 0.012;
+  const R = m * (0.09 + 0.15 * level + breath);
+  const gr = R * (2.2 + 2.2 * level);
+  const glow = ctx.createRadialGradient(cx, cy, R * 0.2, cx, cy, gr);
+  glow.addColorStop(0, rgba(body, 0.22 + 0.45 * level));
+  glow.addColorStop(1, rgba(body, 0));
+  ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(cx, cy, gr, 0, 6.283); ctx.fill();
+
+  const core = ctx.createRadialGradient(cx - R * 0.25, cy - R * 0.3, R * 0.1, cx, cy, R);
+  core.addColorStop(0, rgba(bright, 1));
+  core.addColorStop(1, rgba(mix(body, [0, 0, 0], 0.18), 1));
+  ctx.fillStyle = core; ctx.beginPath(); ctx.arc(cx, cy, R, 0, 6.283); ctx.fill();
+}
+
+// ---------- Bucle ----------
+let last = performance.now(), t0 = last;
+const msgEl = $("msg"), dbgEl = $("debug");
+if (DEBUG) dbgEl.style.display = "block";
+
+function frame(now) {
+  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  const t = (now - t0) / 1000;
+
+  if (DEMO) { state = demoState(t); met = state === "success" ? 2 : (state === "fail" ? 1 : 0); total = 2; }
+  else if (connected && lastMsg && now - lastMsg > 3000) state = "offline";   // el servidor dejó de hablar
+  else if (!connected && state !== "offline") state = "offline";
+
+  const target = targetLevel();
+  const tau = target > level ? 0.7 : 1.4;               // sube rápido, baja suave
+  level += (target - level) * (1 - Math.exp(-dt / tau));
+
+  if (!videoMode) draw(t);
+  updateAudio();
+  if (videoMode && !(audio && audio.vsrc)) vid.volume = Math.min(1, Math.max(0, videoGain()));
+
+  const text = TEXT[state] || "";
+  msgEl.textContent = text; msgEl.classList.toggle("on", !!text);
+  if (DEBUG) dbgEl.textContent = `estado: ${state}\nbandas: ${met}/${total}\nnivel: ${level.toFixed(2)}\nconexión: ${DEMO ? "demo" : (connected ? "ok" : "caída")}`;
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+// ---------- Controles ----------
+let wakeLock = null;
+async function keepAwake() {
+  try { if ("wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen"); } catch (e) {}
+}
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && audio) keepAwake(); });
+
+function begin() {
+  startAudio();
+  if (audio && audio.ac.state === "suspended") audio.ac.resume();
+  try { if (!document.fullscreenElement && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen(); } catch (e) {}
+  keepAwake();
+  $("start").style.display = "none";
+  showControls();
+}
+$("btn-go").onclick = () => { stopVideo(); begin(); };
+
+// ---------- Videos descargados (carpeta videos/ del proyecto) ----------
+function stopVideo() {
+  videoMode = false; document.body.classList.remove("video");
+  try { vid.pause(); } catch (e) {}
+}
+function playVideo(name) {
+  videoMode = true; document.body.classList.add("video");
+  try { localStorage.setItem("fb_video", name); } catch (e) {}
+  startAudio();                                   // dentro del gesto del usuario (requisito de iOS)
+  if (audio && !audio.vsrc) {
+    try { audio.vsrc = audio.ac.createMediaElementSource(vid); audio.vsrc.connect(audio.vgain); vid.volume = 1; }
+    catch (e) { audio.vsrc = null; }
+  }
+  vid.src = "/videos/" + encodeURIComponent(name);
+  const p = vid.play(); if (p && p.catch) p.catch(() => { $("start").style.display = "flex"; });
+  begin();
+}
+vid.addEventListener("error", () => { $("start-hint").textContent = "No se pudo reproducir ese video (¿formato? usa MP4 H.264 + AAC)"; stopVideo(); $("start").style.display = "flex"; });
+async function loadVideos() {
+  if (DEMO) return;
+  let list = [];
+  let ok = false;
+  try { const r = await fetch("/videos.json", { cache: "no-store" }); if (r.ok) { list = await r.json(); ok = true; } } catch (e) {}
+  if (!ok) { $("start-hint").textContent = "Sin lista de videos: abre esta página desde el servidor (http://localhost:8000/feedback.html) con el programa corriendo"; return; }
+  if (!Array.isArray(list) || !list.length) return;
+  $("btn-go").textContent = "Orbe de luz (sin video)";
+  let last = ""; try { last = localStorage.getItem("fb_video") || ""; } catch (e) {}
+  const box = $("choices");
+  for (const name of list) {
+    const b = document.createElement("button");
+    b.textContent = "▶ " + name.replace(/\.[^.]+$/, ""); b.title = name;
+    if (name === last) { b.style.borderColor = "#7fb0dd"; box.insertBefore(b, box.firstChild); } else box.appendChild(b);
+    b.onclick = () => playVideo(name);
+  }
+  $("btn-list").style.display = "";
+  $("start-hint").textContent = "Elige un video o el orbe. Solo el volumen cambia con tu desempeño.";
+}
+loadVideos();
+$("btn-list").onclick = () => { $("start").style.display = "flex"; };
+$("btn-mute").onclick = () => { muted = !muted; $("btn-mute").textContent = muted ? "🔇" : "🔊"; };
+$("vol").oninput = (e) => { volume = e.target.value / 100; };
+$("btn-full").onclick = () => {
+  try { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); } catch (e) {}
+};
+
+let hideTimer = null;
+function showControls() {
+  $("controls").classList.add("show");
+  clearTimeout(hideTimer);
+  hideTimer = setTimeout(() => $("controls").classList.remove("show"), 3000);
+}
+["mousemove", "touchstart", "click"].forEach(ev => addEventListener(ev, () => { if ($("start").style.display === "none") showControls(); }));
+if (DEMO) { $("start").querySelector("small").textContent = "Modo demo (sin servidor)"; }
+</script>
+</body>
+</html>

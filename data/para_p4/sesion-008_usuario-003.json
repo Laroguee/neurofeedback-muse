@@ -1,0 +1,19 @@
+{
+  "protocolo_codigo": "pruebas",
+  "dispositivo_codigo": "muse_2",
+  "acquisition_method": "brainflow_ble",
+  "firmware_version": "1.0.27",
+  "sampling_rate": 256,
+  "eeg_channels": [
+    "TP9",
+    "AF7",
+    "AF8",
+    "TP10"
+  ],
+  "ts_inicio": "2026-10-29T18:33:14-06:00",
+  "ts_fin": "2026-10-29T18:34:04-06:00",
+  "signal_quality_flag": "warning",
+  "banda_reforzada_1": "low_alpha",
+  "banda_reforzada_2": "high_alpha",
+  "banda_inhibida_1": "high_beta"
+}

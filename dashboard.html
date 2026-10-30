@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Proyecto 3 · Live Session</title>
+<style>
+  :root { --bg:#0a0e14; --card:#11151c; --line:#1e232c; --text:#e4e6eb; --muted:#70757f;
+          --green:#4cd9a5; --red:#e25563; --amber:#f2a623; }
+  * { box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:-apple-system,"Segoe UI",sans-serif; margin:0; padding:24px; }
+  .hidden { display:none !important; }
+  .topbar { display:flex; align-items:center; gap:24px; margin-bottom:20px; }
+  h1 { font-size:18px; letter-spacing:2px; font-weight:600; margin:0; }
+  .tabs { display:flex; gap:4px; background:var(--card); border:1px solid var(--line); border-radius:10px; padding:4px; }
+  .tab { background:none; border:0; color:var(--muted); padding:8px 18px; border-radius:7px; font-size:14px; cursor:pointer; }
+  .tab.active { background:#16303a; color:#7fd0f0; }
+  .status { margin-left:auto; font-size:13px; color:var(--muted); }
+  .status.connected { color:var(--green); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; }
+  .grid { display:grid; gap:14px; margin-bottom:24px; }
+  .grid.three { grid-template-columns:repeat(3,1fr); }
+  .grid.two { grid-template-columns:repeat(2,1fr); }
+  .head { display:flex; align-items:center; gap:8px; }
+  .label { font-size:13px; font-weight:600; }
+  .range { font-size:11px; color:var(--muted); }
+  .big { font-size:28px; font-weight:600; line-height:1.1; }
+  .tag { font-size:11px; color:var(--muted); }
+  .small { font-size:12px; color:var(--muted); }
+  canvas.spark { width:100%; height:60px; display:block; margin-top:8px; }
+  .section-title { font-size:12px; color:var(--muted); letter-spacing:1px; margin:6px 0 10px; }
+  .channel-row { display:flex; align-items:center; background:var(--card); border:1px solid var(--line); border-radius:10px; margin-bottom:8px; overflow:hidden; }
+  .channel-label { width:130px; padding:14px; border-right:1px solid var(--line); flex-shrink:0; }
+  .channel-label .name { font-size:14px; font-weight:600; }
+  .quality { font-size:11px; letter-spacing:1px; margin-top:4px; }
+  .quality.excellent { color:var(--green); }
+  .quality.poor { color:var(--red); }
+  .channel-row canvas { flex:1; height:90px; min-width:0; }
+
+  /* formulario de protocolo */
+  .form { max-width:640px; display:flex; flex-direction:column; gap:18px; }
+  .field .title { display:block; font-size:12px; color:var(--muted); letter-spacing:1px; margin-bottom:6px; }
+  input[type=text], input[type=number], select { background:#0d1117; color:var(--text); border:1px solid var(--line);
+          border-radius:8px; padding:9px 11px; font-size:14px; width:100%; }
+  .row2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; }
+  .chip { display:flex; align-items:center; gap:6px; background:#0d1117; border:1px solid var(--line);
+          border-radius:999px; padding:6px 12px; font-size:13px; cursor:pointer; }
+  .chip input { accent-color:var(--green); }
+  .chip.inhibit input { accent-color:var(--amber); }
+  .chip:has(input:disabled) { opacity:.35; cursor:not-allowed; }
+  button.primary { background:#1f6f5a; color:#eafff6; border:0; border-radius:8px; padding:11px 18px;
+          font-size:14px; font-weight:600; cursor:pointer; align-self:flex-start; }
+  button.danger { background:#7a2a33; color:#ffe9eb; border:0; border-radius:8px; padding:9px 16px;
+          font-size:13px; font-weight:600; cursor:pointer; }
+  button:disabled { opacity:.4; cursor:not-allowed; }
+  button.ghost { background:none; color:var(--text); border:1px solid var(--line); border-radius:8px;
+          padding:8px 14px; font-size:13px; cursor:pointer; }
+  .fb { font-size:11px; letter-spacing:1px; padding:3px 9px; border-radius:6px; font-weight:600; background:#1b2029; color:var(--muted); }
+  .fb.success { background:#143a2f; color:var(--green); }
+  .fb.fail { background:#3a1a1e; color:var(--red); }
+  .fb.invalid, .fb.calibrating { background:#3a2e12; color:var(--amber); }
+  a.link { color:#7fd0f0; font-size:12px; }
+  .error { color:var(--red); font-size:13px; min-height:18px; }
+
+  /* vista de entrenamiento */
+  .proto-bar { display:flex; align-items:center; gap:22px; margin-bottom:14px; flex-wrap:wrap; }
+  .proto-name { font-size:16px; font-weight:600; }
+  .clock { font-size:22px; font-weight:600; font-variant-numeric:tabular-nums; }
+  .clock.over { color:var(--amber); }
+  .controls { margin-left:auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .badge { font-size:10px; letter-spacing:1px; padding:2px 7px; border-radius:5px; font-weight:600; }
+  .badge.reward { background:#143a2f; color:var(--green); }
+  .badge.inhibit { background:#3a2e12; color:var(--amber); }
+  .badge.paused { background:#3a2e12; color:var(--amber); }
+  .metrics { margin-top:10px; }
+  .metric { display:flex; justify-content:space-between; align-items:center; padding:9px 0;
+          border-top:1px solid var(--line); font-size:12px; }
+  .metric .k { color:var(--muted); letter-spacing:1px; }
+  .metric .v { font-size:15px; font-weight:600; }
+  .metric input { width:90px; text-align:right; padding:5px 8px; font-size:14px; }
+  .saved { border-color:#1f6f5a; }
+  .saved .path { font-family:Consolas,monospace; font-size:12px; word-break:break-all; margin:8px 0; color:var(--green); }
+  .saved .warn { color:var(--amber); font-size:12px; margin-top:6px; }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <h1>LIVE SESSION</h1>
+    <div class="tabs">
+      <button class="tab active" id="tab-eeg">All EEG</button>
+      <button class="tab" id="tab-training">Training</button>
+    </div>
+    <div class="status" id="status">Conectando...</div>
+  </div>
+
+  <!-- ===== Vista All EEG ===== -->
+  <section id="view-eeg">
+    <div class="grid three" id="bandsGrid"></div>
+    <div class="section-title">RAW EEG</div>
+    <div id="rawChannels"></div>
+  </section>
+
+  <!-- ===== Vista Training ===== -->
+  <section id="view-training" class="hidden">
+    <div id="train-setup" class="form">
+      <div class="card saved hidden" id="saved-panel"></div>
+
+      <div class="field">
+        <label class="title" for="protocol-name">NOMBRE DEL PROTOCOLO</label>
+        <input type="text" id="protocol-name" maxlength="40" placeholder="Ej. Monastra">
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label class="title" for="client-alias">CLIENTE (alias, no uses el nombre real)</label>
+          <input type="text" id="client-alias" list="client-list" maxlength="40" placeholder="Ej. Cliente 1">
+          <datalist id="client-list"></datalist>
+        </div>
+        <div class="field">
+          <label class="title" for="duration-min">DURACIÓN (minutos)</label>
+          <input type="number" id="duration-min" min="1" max="60" value="10">
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field"><label class="title" for="sel-active">ELECTRODO ACTIVO</label><select id="sel-active"></select></div>
+        <div class="field"><label class="title" for="sel-ref">ELECTRODO DE REFERENCIA</label><select id="sel-ref"></select></div>
+      </div>
+      <div class="field"><span class="title">BANDAS A MEJORAR (1 a 2)</span><div class="chips" id="chips-reward"></div></div>
+      <div class="field"><span class="title">BANDAS A INHIBIR (1 a 2)</span><div class="chips" id="chips-inhibit"></div></div>
+      <div class="field" id="thr-field">
+        <span class="title">UMBRALES (opcional)</span>
+        <div class="small" id="thr-hint">Elige bandas para ponerles umbral. Si lo dejas vacío, se calcula en la calibración previa (~25 s válidos). Los que escribas aquí se respetan.</div>
+        <div class="row2" id="thr-inputs" style="margin-top:8px"></div>
+      </div>
+      <div class="field">
+        <label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer">
+          <input type="checkbox" id="save-raw" style="margin-top:3px">
+          <span><b>Guardar señal cruda (solo en esta computadora)</b><br>
+          <span class="small">Para revisar ruido/artefactos después. Ocupa ~1 MB por minuto, incluye la calibración y NO se envía a P4.</span></span>
+        </label>
+      </div>
+      <div class="error" id="setup-error"></div>
+      <button class="primary" id="btn-start">Iniciar (calibra y luego entrena)</button>
+    </div>
+
+    <div id="train-live" class="hidden">
+      <div class="proto-bar">
+        <div>
+          <div class="tag">PROTOCOL <span class="badge paused hidden" id="live-paused">EN PAUSA</span></div>
+          <div class="proto-name" id="live-name">--</div>
+          <div class="small" id="live-electrodes">--</div>
+        </div>
+        <div>
+          <div class="tag">SESSION TIME</div>
+          <div class="clock" id="live-time">00:00 / 10:00</div>
+          <div class="small" id="live-valid">--</div>
+        </div>
+        <div>
+          <div class="tag">FEEDBACK AL CLIENTE</div>
+          <span class="fb" id="live-fb">--</span>
+          <div style="margin-top:4px"><a class="link" href="feedback.html" target="_blank">Abrir pantalla del cliente</a></div>
+        </div>
+        <div class="controls">
+          <button class="ghost" id="btn-pause">Pausar</button>
+          <button class="ghost" id="btn-restart">Reiniciar</button>
+          <button class="ghost" id="btn-discard">Descartar</button>
+          <button class="danger" id="btn-save">End session and save</button>
+        </div>
+      </div>
+      <div class="error" id="live-error"></div>
+      <div class="grid two" id="trainBands"></div>
+      <div class="section-title">RAW EEG</div>
+      <div class="channel-row">
+        <div class="channel-label">
+          <div class="name" id="train-raw-name">--</div>
+          <div class="quality excellent" id="train-quality">EXCELLENT</div>
+        </div>
+        <canvas id="train-raw"></canvas>
+      </div>
+    </div>
+  </section>
+
+<script>
+const BAND_DEFS = {
+  delta:     { label: "Delta",     range: "1-3 Hz",   color: "#e25563" },
+  theta:     { label: "Theta",     range: "4-7 Hz",   color: "#f2a623" },
+  low_alpha: { label: "Low Alpha", range: "8-10 Hz",  color: "#4cd9a5" },
+  high_alpha:{ label: "High Alpha",range: "10-12 Hz", color: "#7fe3c0" },
+  low_beta:  { label: "Low Beta",  range: "12-15 Hz", color: "#4a9eea" },
+  beta:      { label: "Beta",      range: "16-20 Hz", color: "#6b7fe0" },
+  high_beta: { label: "High Beta", range: "21-30 Hz", color: "#b983e0" },
+};
+const BAND_KEYS = Object.keys(BAND_DEFS);
+const MAX_HISTORY = 60;
+const RAW_WINDOW_SECONDS = 5;
+const MAX_PER_SIDE = 2;          // igual que MAX_BANDS_PER_SIDE en live_server.py
+const REQUIRE_BOTH_SIDES = true; // igual que REQUIRE_BOTH_SIDES en live_server.py
+
+const $ = (id) => document.getElementById(id);
+const mean = (arr) => arr.reduce((a, b) => a + b, 0) / arr.length;
+const fmt = (v) => (v === null || v === undefined) ? "--" : v.toFixed(2);
+const mmss = (s) => String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(Math.floor(s % 60)).padStart(2, "0");
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+// ---------- Estado ----------
+let activeTab = "eeg";
+let latest = null, dirty = false, lastDraw = 0, lastSeq = -1;
+let lastMsgTime = Date.now(), streamOk = true, lastSfreq = 256;
+let trainingActive = false, currentKey = "", trainHistory = {}, trainBuffer = [], lastTrainSeq = -1;
+let knownClients = "";
+const bandHistory = {};
+BAND_KEYS.forEach(k => bandHistory[k] = []);
+const channelRows = {}, rawBuffers = {};
+
+// ---------- Conexión ----------
+const ws = new WebSocket(`ws://${location.hostname || "localhost"}:8765`);  // sirve desde la compu o desde la red local
+function send(obj) { if (ws.readyState === 1) ws.send(JSON.stringify(obj)); }
+const statusEl = $("status");
+function setStatus(text, ok) { statusEl.textContent = text; statusEl.className = "status" + (ok ? " connected" : ""); }
+
+// ---------- Pestañas ----------
+function showTab(tab) {
+  activeTab = tab;
+  $("view-eeg").classList.toggle("hidden", tab !== "eeg");
+  $("view-training").classList.toggle("hidden", tab !== "training");
+  $("tab-eeg").classList.toggle("active", tab === "eeg");
+  $("tab-training").classList.toggle("active", tab === "training");
+  dirty = true;
+}
+$("tab-eeg").onclick = () => showTab("eeg");
+$("tab-training").onclick = () => showTab("training");
+
+// ---------- Dibujo ----------
+function drawLine(canvas, values, color, opts = {}) {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (!w || !h) return;  // vista oculta
+  if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, w, h);
+  if (values.length < 2) return;
+  const threshold = opts.threshold ?? null;
+
+  let min, max;
+  if (opts.range) {
+    [min, max] = opts.range;
+  } else {
+    min = Math.min(...values); max = Math.max(...values);
+    if (threshold !== null) { min = Math.min(min, threshold); max = Math.max(max, threshold); }
+    if (min === max) { min -= 1; max += 1; }
+  }
+  const y = (v) => h - ((v - min) / (max - min)) * h;
+
+  if (threshold !== null) {  // línea punteada del umbral
+    ctx.beginPath();
+    ctx.setLineDash([5, 4]);
+    ctx.strokeStyle = "#a8626a";
+    ctx.lineWidth = 1;
+    ctx.moveTo(0, y(threshold)); ctx.lineTo(w, y(threshold));
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  ctx.beginPath();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  values.forEach((v, i) => {
+    const x = (i / (values.length - 1)) * w;
+    i === 0 ? ctx.moveTo(x, y(v)) : ctx.lineTo(x, y(v));
+  });
+  ctx.stroke();
+}
+
+// ---------- Vista All EEG ----------
+const bandCanvases = {};
+BAND_KEYS.forEach(key => {
+  const def = BAND_DEFS[key];
+  const card = document.createElement("div");
+  card.className = "card";
+  card.innerHTML = `
+    <div class="head"><span class="label">${def.label}</span><span class="range">${def.range}</span></div>
+    <div style="display:flex;align-items:baseline;gap:10px;margin-top:6px">
+      <span class="big" id="val-${key}">--</span>
+      <span class="tag">prom. 5 s</span>
+      <span class="small" style="margin-left:auto">ahora <span id="now-${key}">--</span></span>
+    </div>
+    <canvas class="spark"></canvas>`;
+  $("bandsGrid").appendChild(card);
+  bandCanvases[key] = card.querySelector("canvas");
+});
+
+function ensureChannelRows(names, sfreq) {
+  if (Object.keys(channelRows).length > 0) return;
+  names.forEach(name => {
+    const row = document.createElement("div");
+    row.className = "channel-row";
+    row.innerHTML = `
+      <div class="channel-label">
+        <div class="name">${name}</div>
+        <div class="quality excellent" id="quality-${name}">EXCELLENT</div>
+      </div>
+      <canvas></canvas>`;
+    $("rawChannels").appendChild(row);
+    channelRows[name] = row.querySelector("canvas");
+    rawBuffers[name] = new Array(sfreq * RAW_WINDOW_SECONDS).fill(0);
+  });
+}
+
+function drawEeg() {
+  latest.channel_names.forEach((name, i) => {
+    drawLine(channelRows[name], rawBuffers[name], "#e4e6eb", { range: [-100, 100] });
+    const q = latest.quality[i];
+    const qEl = $(`quality-${name}`);
+    qEl.textContent = q === "excellent" ? "EXCELLENT" : "REVISAR";
+    qEl.className = "quality " + q;
+  });
+  BAND_KEYS.forEach(key => {
+    const hist = bandHistory[key];
+    $(`val-${key}`).textContent = hist.length ? mean(hist.slice(-5)).toFixed(2) : "--";  // promedio de los últimos 5 s
+    $(`now-${key}`).textContent = hist.length ? hist[hist.length - 1].toFixed(2) : "--";  // valor de este segundo
+    drawLine(bandCanvases[key], hist, BAND_DEFS[key].color);
+  });
+}
+
+// ---------- Formulario de protocolo ----------
+let setupBuilt = false;
+function checkedBands(group) {
+  return [...document.querySelectorAll(`input[data-group="${group}"]:checked`)].map(cb => cb.dataset.band);
+}
+function syncChips() {  // máx. por lado y una banda no puede estar en los dos lados
+  for (const group of ["reward", "inhibit"]) {
+    const other = group === "reward" ? "inhibit" : "reward";
+    const mine = checkedBands(group), theirs = checkedBands(other);
+    document.querySelectorAll(`input[data-group="${group}"]`).forEach(cb => {
+      cb.disabled = theirs.includes(cb.dataset.band) || (!cb.checked && mine.length >= MAX_PER_SIDE);
+    });
+  }
+  syncThresholdInputs();
+}
+function syncThresholdInputs() {
+  const bands = [...checkedBands("reward"), ...checkedBands("inhibit")];
+  const box = $("thr-inputs");
+  const old = {};
+  box.querySelectorAll("input").forEach(i => old[i.dataset.band] = i.value);  // no perder lo ya escrito
+  box.innerHTML = bands.map(b => {
+    const role = checkedBands("reward").includes(b) ? "subir" : "bajar";
+    return `<div><label class="title" style="margin-bottom:4px">${BAND_DEFS[b].label} (${role})</label>
+      <input type="number" step="0.05" min="0" data-band="${b}" placeholder="auto" value="${old[b] ?? ""}"></div>`;
+  }).join("");
+  $("thr-hint").style.display = bands.length ? "none" : "";
+}
+function readThresholds() {
+  const out = {};
+  document.querySelectorAll("#thr-inputs input").forEach(i => {
+    if (i.value !== "") out[i.dataset.band] = parseFloat(i.value);
+  });
+  return out;
+}
+function buildSetup(names, excluded) {
+  if (setupBuilt) return;
+  setupBuilt = true;
+  const opt = (n) => `<option value="${n}" ${excluded.includes(n) ? "disabled" : ""}>${n}${excluded.includes(n) ? " (excluido)" : ""}</option>`;
+  $("sel-active").innerHTML = names.map(opt).join("");
+  $("sel-ref").innerHTML = `<option value="none">Ninguno (solo activo)</option>` + names.map(opt).join("");
+  $("sel-active").value = (names.includes("AF8") && !excluded.includes("AF8")) ? "AF8" : names.find(n => !excluded.includes(n));
+  $("sel-ref").value = (names.includes("TP9") && !excluded.includes("TP9")) ? "TP9" : "none";
+  for (const group of ["reward", "inhibit"]) {
+    $(`chips-${group}`).innerHTML = BAND_KEYS.map(k =>
+      `<label class="chip ${group}"><input type="checkbox" data-group="${group}" data-band="${k}"> ${BAND_DEFS[k].label}</label>`).join("");
+  }
+  document.querySelectorAll("input[data-group]").forEach(cb => cb.addEventListener("change", syncChips));
+}
+
+function updateClientList(clients) {
+  const key = (clients || []).join("|");
+  if (key === knownClients) return;
+  knownClients = key;
+  $("client-list").innerHTML = (clients || []).map(c => `<option value="${esc(c)}">`).join("");
+}
+
+function validateProtocol(p, client, duration) {
+  if (!p.name) return "Ponle un nombre al protocolo";
+  if (!client) return "Escribe el alias del cliente";
+  if (!(duration >= 1 && duration <= 60)) return "La duración debe estar entre 1 y 60 minutos";
+  if (p.reference === p.active) return "El activo y la referencia deben ser distintos";
+  if (!p.reward.length && !p.inhibit.length) return "Elige al menos una banda";
+  if (REQUIRE_BOTH_SIDES && (!p.reward.length || !p.inhibit.length)) return "Elige al menos 1 banda a mejorar y 1 a inhibir";
+  return "";
+}
+$("btn-start").onclick = () => {
+  const protocol = {
+    name: $("protocol-name").value.trim(),
+    active: $("sel-active").value,
+    reference: $("sel-ref").value === "none" ? null : $("sel-ref").value,
+    reward: checkedBands("reward"),
+    inhibit: checkedBands("inhibit"),
+  };
+  const client = $("client-alias").value.trim();
+  const duration = parseFloat($("duration-min").value);
+  const thresholds = readThresholds();
+  $("setup-error").textContent = validateProtocol(protocol, client, duration)
+    || (Object.values(thresholds).some(v => !(v >= 0)) ? "Umbral inválido" : "");
+  if (!$("setup-error").textContent) {
+    $("saved-panel").classList.add("hidden");
+    send({ type: "start_training", protocol, client, duration_min: duration, thresholds, save_raw: $("save-raw").checked });  // el servidor valida otra vez
+  }
+};
+
+// ---------- Controles del entrenamiento ----------
+$("btn-pause").onclick = () => send({ type: "pause_training", paused: !(latest && latest.training && latest.training.paused) });
+$("btn-restart").onclick = () => {
+  if (confirm("¿Reiniciar? Se descartan los datos grabados hasta ahora y el reloj vuelve a 00:00.")) send({ type: "restart_training" });
+};
+$("btn-discard").onclick = () => {
+  if (confirm("¿Descartar la sesión SIN guardar? Se pierden los datos.")) send({ type: "discard_training" });
+};
+$("btn-save").onclick = () => send({ type: "save_training" });
+
+function showSaved(msg) {
+  const warnings = (msg.warnings || []).map(w => `<div class="warn">⚠ ${esc(w)}</div>`).join("");
+  const p4 = (msg.p4_files || []).length
+    ? `<div class="small">Archivos para P4 (${msg.p4_rows} filas, 1 cada 5 s):</div>` +
+      msg.p4_files.map(f => `<div class="path">${esc(f)}</div>`).join("")
+    : `<div class="small">Para P4: no se generaron archivos.</div>`;
+  $("saved-panel").innerHTML = `
+    <div class="label">Sesión ${esc(msg.id_sesion)} guardada ✔ <span class="small">(usuario ${esc(msg.id_usuario)})</span></div>
+    <div class="small">${mmss(msg.duration_s)} de entrenamiento · ${msg.valid_pct}% de segundos válidos · calidad: <b>${esc(msg.flag)}</b></div>
+    <div class="small" style="margin-top:8px">Resumen para el compañero (${msg.support_rows} filas, 1 por segundo y banda):</div>
+    <div class="path">${esc(msg.folder)}</div>
+    ${p4}
+    ${msg.raw ? `<div class="small" style="margin-top:8px">Señal cruda (solo local, ${msg.raw.duracion_s} s):</div><div class="path">${esc(msg.folder)}\\${esc(msg.raw.archivo)}</div>` : ""}
+    ${warnings}
+    <button class="ghost" id="btn-saved-ok" style="margin-top:10px">Cerrar</button>`;
+  $("saved-panel").classList.remove("hidden");
+  $("btn-saved-ok").onclick = () => $("saved-panel").classList.add("hidden");
+  showTab("training");
+}
+
+// ---------- Vista de entrenamiento en vivo ----------
+function showTrainingState(active) {
+  $("train-setup").classList.toggle("hidden", active);
+  $("train-live").classList.toggle("hidden", !active);
+}
+
+function buildLive(t) {
+  $("live-name").textContent = t.name;
+  $("live-electrodes").textContent = t.reference
+    ? `${t.active} (active) — ${t.reference} (reference)`
+    : `${t.active} (active) — sin referencia`;
+  $("train-raw-name").textContent = t.reference ? `${t.active} – ${t.reference}` : t.active;
+  $("live-error").textContent = "";
+  trainBuffer = new Array(lastSfreq * RAW_WINDOW_SECONDS).fill(0);
+  trainHistory = {};
+  lastTrainSeq = -1;
+
+  const grid = $("trainBands");
+  grid.innerHTML = "";
+  [...t.reward, ...t.inhibit].forEach(band => {
+    const role = t.bands[band].role, def = BAND_DEFS[band];
+    trainHistory[band] = [];
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = `
+      <div class="head">
+        <span class="label" style="color:${role === "reward" ? "var(--green)" : "var(--amber)"}">${def.label}</span>
+        <span class="range">${def.range}</span>
+        <span class="badge ${role}">${role === "reward" ? "REWARD" : "INHIBIT"}</span>
+        <span class="small" style="margin-left:auto">ahora <span id="t-now-${band}">--</span></span>
+      </div>
+      <canvas class="spark" id="t-chart-${band}"></canvas>
+      <div class="metrics">
+        <div class="metric"><span class="k">AVG VALUE <span class="tag">(5 s)</span></span><span class="big" id="t-avg-${band}">--</span></div>
+        <div class="metric"><span class="k">THRESHOLD</span><input type="number" step="0.05" min="0" id="t-thr-${band}"></div>
+        <div class="metric"><span class="k">AVG SUCCESS RATE <span class="tag">(10 s)</span></span><span class="v" id="t-suc-${band}">--</span></div>
+      </div>`;
+    grid.appendChild(card);
+    const input = card.querySelector("input");
+    input.addEventListener("change", () => {
+      const v = parseFloat(input.value);
+      if (!Number.isNaN(v) && v >= 0) send({ type: "set_threshold", band, value: v });
+    });
+  });
+}
+
+function drawTraining() {
+  const t = latest.training;
+  if (!t) return;
+  drawLine($("train-raw"), trainBuffer, "#e4e6eb", { range: [-100, 100] });
+  const q = latest.train_quality;
+  $("train-quality").textContent = q === "excellent" ? "EXCELLENT" : "REVISAR";
+  $("train-quality").className = "quality " + q;
+
+  // reloj, pausa y % de segundos válidos
+  const calib = t.phase === "calibrating";
+  const over = !calib && t.elapsed_s > t.target_s;
+  $("live-time").textContent = calib ? "CALIBRANDO" : `${mmss(t.elapsed_s)} / ${mmss(t.target_s)}`;
+  $("live-time").className = "clock" + (over ? " over" : "");
+  $("btn-save").disabled = calib;   // todavía no hay nada que guardar
+  const why = t.invalid_reasons || {}, names = { electrodo: "electrodo", artefacto: "artefacto", delta: "delta" };
+  const whyText = Object.keys(why).length ? " (inválidos: " + Object.entries(why).map(([k, n]) => `${names[k] || k} ${n}`).join(" · ") + ")" : "";
+  $("live-valid").textContent = calib
+    ? `${t.calib_valid} / ${t.calib_target} s válidos · el entrenamiento y la grabación empiezan solos` + whyText
+    : (t.valid_pct === null ? "--" : t.valid_pct + "% de segundos válidos" + whyText)
+      + (over ? " · tiempo cumplido, puedes terminar y guardar" : "");
+  $("live-paused").classList.toggle("hidden", !t.paused);
+  const fb = t.feedback || { state: "calibrating", met: 0, total: 0 };
+  const fbText = { success: "✔ RECOMPENSA", fail: "✖ SIN RECOMPENSA", invalid: "… SEÑAL NO VÁLIDA", calibrating: "… CALIBRANDO UMBRAL" };
+  $("live-fb").textContent = t.paused ? "EN PAUSA" : ((fbText[fb.state] || "--") + (fb.total && fb.state !== "invalid" && fb.state !== "calibrating" ? ` (${fb.met}/${fb.total})` : ""));
+  $("live-fb").className = "fb " + (t.paused ? "" : fb.state);
+  $("btn-pause").textContent = t.paused ? "Reanudar" : "Pausar";
+
+  for (const [band, info] of Object.entries(t.bands)) {
+    $(`t-now-${band}`).textContent = fmt(info.value);
+    $(`t-avg-${band}`).textContent = fmt(info.avg5);
+    $(`t-suc-${band}`).textContent = info.success === null ? "--" : info.success.toFixed(0) + "%";
+    const input = $(`t-thr-${band}`);
+    if (document.activeElement !== input) input.value = info.threshold === null ? "" : info.threshold.toFixed(2);
+    input.placeholder = info.threshold === null ? "calibrando…" : "";
+    drawLine($(`t-chart-${band}`), trainHistory[band], info.role === "reward" ? "#4cd9a5" : "#f2a623",
+             { threshold: info.threshold });
+  }
+}
+
+// ---------- Mensajes del servidor ----------
+ws.onopen = () => setStatus("Conectado", true);
+ws.onclose = () => setStatus("Desconectado", false);
+ws.onerror = () => setStatus("Error de conexión — ¿corriste live_server.py?", false);
+
+ws.onmessage = (event) => {
+  lastMsgTime = Date.now();
+  const msg = JSON.parse(event.data);
+
+  if (msg.type === "status") {
+    streamOk = msg.stream_ok;
+    setStatus(streamOk ? "Conectado" : "Sin señal del Muse — intentando reconectar...", streamOk);
+    return;
+  }
+  if (msg.type === "error") {
+    $("setup-error").textContent = msg.message;
+    $("live-error").textContent = msg.message;
+    return;
+  }
+  if (msg.type === "saved") { showSaved(msg); return; }
+
+  setStatus(msg.warming_up ? "Conectado · estabilizando filtros (~5 s)…" : "Conectado", true);
+  lastSfreq = msg.sfreq;
+  ensureChannelRows(msg.channel_names, msg.sfreq);
+  buildSetup(msg.channel_names, msg.excluded_channels || []);
+  updateClientList(msg.clients);
+
+  msg.channel_names.forEach((name, i) => {
+    const buf = rawBuffers[name].concat(msg.raw_chunk[i]);
+    rawBuffers[name] = buf.slice(buf.length - msg.sfreq * RAW_WINDOW_SECONDS);
+  });
+
+  if (msg.bands_seq !== lastSeq) {  // las bandas se actualizan 1 vez por segundo
+    lastSeq = msg.bands_seq;
+    BAND_KEYS.forEach(key => {
+      bandHistory[key].push(msg.bands[key] ?? 0);
+      if (bandHistory[key].length > MAX_HISTORY) bandHistory[key].shift();
+    });
+  }
+
+  // Entrenamiento: el servidor es la fuente de verdad (si recargas la página, se restaura)
+  const t = msg.training;
+  if (t) {
+    const key = JSON.stringify([t.session_id, t.name, t.active, t.reference, t.reward, t.inhibit]);
+    if (!trainingActive || key !== currentKey) {  // sesión nueva o reiniciada: se reconstruye la vista
+      buildLive(t); currentKey = key; trainingActive = true; showTrainingState(true);
+    }
+    if (msg.train_raw_chunk) {
+      const buf = trainBuffer.concat(msg.train_raw_chunk);
+      trainBuffer = buf.slice(buf.length - msg.sfreq * RAW_WINDOW_SECONDS);
+    }
+    if (t.seq !== lastTrainSeq) {
+      lastTrainSeq = t.seq;
+      for (const [band, info] of Object.entries(t.bands)) {
+        if (info.value !== null) {
+          trainHistory[band].push(info.value);
+          if (trainHistory[band].length > MAX_HISTORY) trainHistory[band].shift();
+        }
+      }
+    }
+  } else if (trainingActive) {
+    trainingActive = false; currentKey = ""; showTrainingState(false);
+  }
+
+  latest = msg;
+  dirty = true;
+};
+
+setInterval(() => {
+  if (ws.readyState === 1 && streamOk && Date.now() - lastMsgTime > 2000) {
+    setStatus("Conectado al servidor, pero sin datos (revisa la terminal de Python)", false);
+  }
+}, 500);
+
+// El dibujo va aparte de la red: aunque el navegador se atrase, no se acumulan frames
+function render(now) {
+  if (dirty && latest && now - lastDraw > 50) {
+    dirty = false; lastDraw = now;
+    if (activeTab === "eeg") drawEeg();
+    else if (trainingActive) drawTraining();
+  }
+  requestAnimationFrame(render);
+}
+requestAnimationFrame(render);
+</script>
+</body>
+</html>

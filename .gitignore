@@ -5,6 +5,7 @@ __pycache__/
 venv/
 env/
 .env
+.pytest_cache/
 
 # Jupyter Notebooks
 .ipynb_checkpoints
@@ -13,4 +14,12 @@ env/
 .vscode/
 .idea/
 
-# Los datos se subirán a GitHub porque son ligeros
+# Datos privados: NO subir (sesiones de clientes, señal EEG cruda y alias de clientes)
+data/sesiones/
+data/clientes.json
+
+# Los demás datos (data/para_p4/, etc.) sí se suben porque son ligeros
+
+# Videos de feedback (pesados): la carpeta existe, su contenido no se sube
+videos/*
+!videos/LEEME.txt

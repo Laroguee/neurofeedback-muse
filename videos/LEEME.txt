@@ -1,0 +1,2 @@
+Pon aqui los videos ya descargados (.mp4 recomendado: H.264 + AAC, tambien .webm/.m4v/.mov).
+Aparecen solos en feedback.html. Esta carpeta no se sube a git.
