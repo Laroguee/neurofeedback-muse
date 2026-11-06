@@ -1855,6 +1855,12 @@ body.drag-active .dashboard-shell {
   border: 1px solid rgba(245, 158, 11, 0.3);
 }
 
+.score-delta-pill.neutral {
+  background: rgba(148, 163, 184, 0.16);
+  color: #94A3B8;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
 .score-divider {
   height: 1px;
   background: var(--border-subtle);

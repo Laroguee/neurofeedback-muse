@@ -629,7 +629,16 @@
     const firstRow = rawData[0] || {};
     const sessId = metadata.session_id || firstRow.session_id || '001';
     const displayId = String(sessId) === 'sim-001' ? '003' : sessId;
-    document.getElementById('session-id-display').textContent = `Sesión #${displayId}`;
+    const userSuffix = metadata.usuario_id
+      ? ` · Usuario ${metadata.usuario_id}`
+      : (String(sessId) === 'sim-001' ? ' · Demo Boceto' : '');
+    document.getElementById('session-id-display').textContent = `Sesión #${displayId}${userSuffix}`;
+
+    const protocolBadge = document.getElementById('protocol-badge');
+    if (protocolBadge) {
+      const pName = metadata.protocol_name || inferProtocolName(availableBands);
+      protocolBadge.textContent = `Protocolo: ${pName}`;
+    }
 
     // Barra de progreso de sesiones (ej. 5 / 20)
     const numMatch = String(displayId).match(/\d+/);
@@ -669,7 +678,6 @@
     }
 
     // Protocolo amigable
-    const protocolBadge = document.getElementById('protocol-badge');
     if (protocolBadge) {
       const protoName = metadata.protocol_name || inferProtocolName(availableBands);
       protocolBadge.textContent = `Entrenamiento: ${protoName}`;
@@ -772,15 +780,25 @@
     const formulaTextEl = document.getElementById('score-formula-text');
 
     if (curScoreEl) curScoreEl.textContent = String(sessionScore);
-    if (pastScoreEl) pastScoreEl.textContent = String(pastInfo.score);
+    if (pastScoreEl) {
+      pastScoreEl.textContent = pastInfo.hasPrev && pastInfo.score !== null ? String(pastInfo.score) : '--';
+    }
     if (pastLabelEl) pastLabelEl.textContent = pastInfo.label;
     if (deltaEl) {
-      const diff = sessionScore - pastInfo.score;
-      deltaEl.textContent = `${diff >= 0 ? '+' : ''}${diff} pts vs anterior`;
-      deltaEl.className = `score-delta-pill ${diff >= 0 ? 'positive' : 'negative'}`;
+      if (pastInfo.hasPrev && pastInfo.score !== null) {
+        const diff = sessionScore - pastInfo.score;
+        deltaEl.textContent = `${diff >= 0 ? '+' : ''}${diff} pts vs anterior`;
+        deltaEl.className = `score-delta-pill ${diff >= 0 ? 'positive' : 'negative'}`;
+      } else {
+        deltaEl.textContent = 'Línea base inicial';
+        deltaEl.className = 'score-delta-pill neutral';
+      }
     }
     if (formulaTextEl) {
-      formulaTextEl.innerHTML = `<strong>¿De dónde sale tu ${sessionScore}/100?</strong> Combina tu tiempo en Zona Objetivo (<strong>${focusedPct}% en Muy bien + Bien</strong>) con una base de participación y puntos extra por tu constancia y rachas sostenidas.`;
+      const compNote = pastInfo.hasPrev && pastInfo.score !== null
+        ? ` Comparado con la anterior (${pastInfo.score} pts), tuviste un cambio de <strong>${sessionScore - pastInfo.score >= 0 ? '+' : ''}${sessionScore - pastInfo.score} pts</strong>.`
+        : ' Esta es la sesión de referencia inicial para medir tus próximos progresos.';
+      formulaTextEl.innerHTML = `<strong>¿De dónde sale tu ${sessionScore}/100?</strong> Combina tu tiempo en Zona Objetivo (<strong>${focusedPct}% en Muy bien + Bien</strong>) con puntos por constancia mental.${compNote}`;
     }
 
     renderBandContributionList(pal);
@@ -942,16 +960,49 @@
 
   function computePastSessionScore(currentScore) {
     const sessId = String(metadata.session_id || '');
+    const userId = String(metadata.usuario_id || '');
+
+    // Sesión #011: Pertenece al Usuario 003. Su sesión anterior real en el sistema es la #005 (Score real: 32)
+    if (sessId === '011') {
+      return {
+        score: 32,
+        hasPrev: true,
+        label: 'Sesión #005 previa (Usuario 003)'
+      };
+    }
+
+    // Sesión #005: Pertenece al Usuario 003. Es la primera sesión registrada en este conjunto para Usuario 003
     if (sessId === '005') {
-      return { score: 56, label: 'Sesión #004 previa' };
+      return {
+        score: null,
+        hasPrev: false,
+        label: 'Sesión inicial (Usuario 003)'
+      };
     }
+
+    // Sesión #004: Pertenece al Usuario 001 (distinto usuario). Es su sesión inicial registrada
     if (sessId === '004') {
-      return { score: 52, label: 'Sesión #003 previa' };
+      return {
+        score: null,
+        hasPrev: false,
+        label: 'Sesión inicial (Usuario 001)'
+      };
     }
+
+    // Sesión demostrativa #003 (sim-001): Ilustrada en el boceto original
     if (sessId === 'sim-001') {
-      return { score: 72, label: 'Sesión #002 previa' };
+      return {
+        score: 72,
+        hasPrev: true,
+        label: 'Sesión #002 previa (Boceto)'
+      };
     }
-    return { score: Math.max(40, currentScore - 7), label: 'Sesión anterior' };
+
+    return {
+      score: null,
+      hasPrev: false,
+      label: 'Sesión de referencia'
+    };
   }
 
   function renderBandContributionList(pal) {
