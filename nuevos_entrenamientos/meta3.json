@@ -1,0 +1,664 @@
+{
+  "session_id": "011",
+  "usuario_id": "003",
+  "simulated": false,
+  "protocol_name": "Pruebas",
+  "protocolo_codigo": "pruebas",
+  "device": "muse_2",
+  "firmware_version": "1.0.27",
+  "active_electrode": "AF7",
+  "reference_electrode": null,
+  "bands": [
+    {
+      "band": "low_alpha",
+      "role": "reward"
+    },
+    {
+      "band": "high_alpha",
+      "role": "reward"
+    },
+    {
+      "band": "high_beta",
+      "role": "inhibit"
+    }
+  ],
+  "start_time": "2026-11-04T22:08:29-06:00",
+  "end_time": "2026-11-04T22:17:09-06:00",
+  "target_duration_s": 480,
+  "duration_s": 520,
+  "valid_s": 369,
+  "valid_pct": 71.0,
+  "signal_quality_flag": "warning",
+  "invalid_seconds_by_reason": {
+    "variabilidad AF7": 55,
+    "delta": 36,
+    "pico AF7": 60
+  },
+  "band_ranges_hz": {
+    "low_alpha": [
+      8,
+      10
+    ],
+    "high_alpha": [
+      10,
+      12
+    ],
+    "high_beta": [
+      21,
+      30
+    ]
+  },
+  "calibration_note": "Antes de esta sesión hubo una calibración (no incluida en estos datos); t_s=0 es el inicio del entrenamiento.",
+  "sample_rate_hz": 1,
+  "value_description": "Amplitud de la banda (raiz de la PSD promedio, ~uV/sqrt(Hz)), suavizada con EMA alpha=0.5. No comparable entre personas sin normalizar.",
+  "success_rule": {
+    "reward": "value > threshold",
+    "inhibit": "value < threshold"
+  },
+  "time_note": "t_s cuenta solo el tiempo activo (sin pausas); timestamp es la hora real.",
+  "threshold_note": "Vacio durante la calibracion inicial. Al terminar: reward = dificultad x promedio de los 5 valores mas altos de la calibracion; inhibir = (2-dificultad) x promedio de los 5 mas bajos. Si el umbral automatico esta encendido se reevalua cada 40 s (ver auto_threshold); el entrenador tambien puede cambiarlo a mano.",
+  "auto_threshold": {
+    "dificultad": 0.7,
+    "top_k": 5,
+    "ventana_s": 40,
+    "sube_si_exito_>=": 0.7,
+    "baja_si_exito_<=": 0.3,
+    "suavizado_referencia": 0.5,
+    "min_segundos_validos": 20,
+    "paso_minimo": 0.05,
+    "evalua_cada_s": 10,
+    "margen_tasa_objetivo": 0.1,
+    "paso_maximo": 0.25,
+    "ajustes": [
+      {
+        "t_s": 40,
+        "banda": "low_alpha",
+        "accion": "sube",
+        "umbral_antes": 0.9636,
+        "umbral_despues": 1.0117,
+        "tasa_exito": 0.714,
+        "segundos_validos": 21,
+        "motivo": "paso mínimo 5%",
+        "dificultad": "mas_dificil"
+      },
+      {
+        "t_s": 40,
+        "banda": "high_alpha",
+        "accion": "sin_cambio",
+        "umbral_antes": 0.7778,
+        "umbral_despues": 0.7778,
+        "tasa_exito": 0.571,
+        "segundos_validos": 21,
+        "motivo": "tasa dentro del rango"
+      },
+      {
+        "t_s": 40,
+        "banda": "high_beta",
+        "accion": "baja",
+        "umbral_antes": 1.3784,
+        "umbral_despues": 1.3095,
+        "tasa_exito": 0.857,
+        "segundos_validos": 21,
+        "motivo": "paso mínimo 5%",
+        "dificultad": "mas_dificil"
+      },
+      {
+        "t_s": 70,
+        "banda": "high_beta",
+        "accion": "baja",
+        "umbral_antes": 1.3095,
+        "umbral_despues": 1.162,
+        "tasa_exito": 0.786,
+        "segundos_validos": 28,
+        "motivo": "salto a tasa objetivo 60%",
+        "dificultad": "mas_dificil"
+      },
+      {
+        "t_s": 80,
+        "banda": "low_alpha",
+        "accion": "sin_cambio",
+        "umbral_antes": 1.0117,
+        "umbral_despues": 1.0117,
+        "tasa_exito": 0.346,
+        "segundos_validos": 26,
+        "motivo": "tasa dentro del rango"
+      },
+      {
+        "t_s": 80,
+        "banda": "high_alpha",
+        "accion": "sin_cambio",
+        "umbral_antes": 0.7778,
+        "umbral_despues": 0.7778,
+        "tasa_exito": 0.577,
+        "segundos_validos": 26,
+        "motivo": "tasa dentro del rango"
+      },
+      {
+        "t_s": 80,
+        "banda": "high_beta",
+        "accion": "sin_cambio",
+        "umbral_antes": 1.162,
+        "umbral_despues": 1.162,
+        "tasa_exito": 0.692,
+        "segundos_validos": 26,
+        "motivo": "tasa dentro del rango"
+      },
+      {
+        "t_s": 90,
+        "banda": "low_alpha",
+        "accion": "baja",
+        "umbral_antes": 1.0117,
+        "umbral_despues": 0.9018,
+        "tasa_exito": 0.192,
+        "segundos_validos": 26,
+        "motivo": "fórmula de la referencia",
+        "dificultad": "mas_facil"
+      },
+      {
+        "t_s": 120,
+        "banda": "low_alpha",
+        "accion": "sin_cambio",
+        "umbral_antes": 0.9018,
+        "umbral_despues": 0.9018,
+        "tasa_exito": 0.5,
+        "segundos_validos": 26,
+        "motivo": "tasa dentro del rango"
+      },
+      {
+        "t_s": 120,
+        "banda": "high_alpha",
+        "accion": "sin_cambio",
+        "umbral_antes": 0.7778,
+        "umbral_despues": 0.7778,
+        "tasa_exito": 0.385,
+        "segundos_validos": 26,
+        "motivo": "tasa dentro del rango"
+      },
+      {
+        "t_s": 120,
+        "banda": "high_beta",
+        "accion": "sin_cambio",
+        "umbral_antes": 1.162,
+        "umbral_despues": 1.162,
+        "tasa_exito": 0.5,
+        "segundos_validos": 26,
+        "motivo": "tasa dentro del rango"
+      },
+      {
+        "t_s": 130,
+        "banda": "low_alpha",
+        "accion": "sube",
+        "umbral_antes": 0.9018,
+        "umbral_despues": 0.9469,
+        "tasa_exito": 0.786,
+        "segundos_validos": 28,
+        "motivo": "paso mínimo 5%",
+        "dificultad": "mas_dificil"
+      },
+      {
+        "t_s": 130,
+        "banda": "high_alpha",
+        "accion": "baja",
+        "umbral_antes": 0.7778,
+        "umbral_despues": 0.7389,
+        "tasa_exito": 0.286,
+        "segundos_validos": 28,
+        "motivo": "paso mínimo 5%",
+        "dificultad": "mas_facil"
+      },
+      {
+        "t_s": 160,
+        "banda": "low_alpha",
+        "accion": "sin_cambio",
+        "umbral_antes": 0.9469,
+        "umbral_despues": 0.9469,
+        "tasa_exito": 0.333,
+        "segundos_validos": 33,
+        "motivo": "tasa dentro del rango"
+      },
+      {
+        "t_s": 160,
+        "banda": "high_alpha",
+        "accion": "sin_cambio",
+        "umbral_antes": 0.7389,
+        "umbral_despues": 0.7389,
+        "tasa_exito": 0.697,
+        "segundos_validos": 33,
+        "motivo": "tasa dentro del rango"
+      },
+      {
+        "t_s": 160,
+        "banda": "high_beta",
+        "accion": "sin_cambio",
+        "umbral_antes": 1.162,
+        "umbral_despues": 1.162,
+        "tasa_exito": 0.455,
+        "segundos_validos": 33,
+        "motivo": "tasa dentro del rango"
+      },
+      {
+        "t_s": 170,
+        "banda": "high_alpha",
+        "accion": "sube",
+        "umbral_antes": 0.7389,
+        "umbral_despues": 0.8521,
+        "tasa_exito": 0.774,
+        "segundos_validos": 31,
+        "motivo": "salto a tasa objetivo 60%",
+        "dificultad": "mas_dificil"
+      },
+      {
+        "t_s": 190,
+        "banda": "high_beta",
+        "accion": "sube",
+        "umbral_antes": 1.162,
+        "umbral_despues": 1.2904,
+        "tasa_exito": 0.2,
+        "segundos_validos": 30,
+        "motivo": "fórmula de la referencia",
+        "dificultad": "mas_facil"
+      },
+      {
+        "t_s": 200,
+        "banda": "low_alpha",
+        "accion": "sin_cambio",
+        "umbral_antes": 0.9469,
+        "umbral_despues": 0.9469,
+        "tasa_exito": 0.407,
+        "segundos_validos": 27,
+        "motivo": "tasa dentro del rango"
+      },
+      {
+        "t_s": 200,
+        "banda": "high_alpha",
+        "accion": "sin_cambio",
+        "umbral_antes": 0.8521,
+        "umbral_despues": 0.8521,
+        "tasa_exito": 0.333,
+        "segundos_validos": 27,
+        "motivo": "tasa dentro del rango"
+      },
+      {
+        "t_s": 200,
+        "banda": "high_beta",
+        "accion": "sin_cambio",
+        "umbral_antes": 1.2904,
+        "umbral_despues": 1.2904,
+        "tasa_exito": 0.667,
+        "segundos_validos": 27,
+        "motivo": "tasa dentro del rango"
+      },
+      {
+        "t_s": 220,
+        "banda": "high_alpha",
+        "accion": "baja",
+        "umbral_antes": 0.8521,
+        "umbral_despues": 0.7957,
+        "tasa_exito": 0.296,
+        "segundos_validos": 27,
+        "motivo": "salto a tasa objetivo 40%",
+        "dificultad": "mas_facil"
+      },
+      {
+        "t_s": 220,
+        "banda": "high_beta",
+        "accion": "baja",
+        "umbral_antes": 1.2904,
+        "umbral_despues": 1.2259,
+        "tasa_exito": 0.778,
+        "segundos_validos": 27,
+        "motivo": "paso mínimo 5%",
+        "dificultad": "mas_dificil"
+      },
+      {
+        "t_s": 240,
+        "banda": "low_alpha",
+        "accion": "sin_cambio",
+        "umbral_antes": 0.9469,
+        "umbral_despues": 0.9469,
+        "tasa_exito": 0.606,
+        "segundos_validos": 33,
+        "motivo": "tasa dentro del rango"
+      },
+      {
+        "t_s": 240,
+        "banda": "high_alpha",
+        "accion": "sin_cambio",
+        "umbral_antes": 0.7957,
+        "umbral_despues": 0.7957,
+        "tasa_exito": 0.636,
+        "segundos_validos": 33,
+        "motivo": "tasa dentro del rango"
+      },
+      {
+        "t_s": 240,
+        "banda": "high_beta",
+        "accion": "sin_cambio",
+        "umbral_antes": 1.2259,
+        "umbral_despues": 1.2259,
+        "tasa_exito": 0.667,
+        "segundos_validos": 33,
+        "motivo": "tasa dentro del rango"
+      },
+      {
+        "t_s": 280,
+        "banda": "low_alpha",
+        "accion": "sube",
+        "umbral_antes": 0.9469,
+        "umbral_despues": 1.0206,
+        "tasa_exito": 0.714,
+        "segundos_validos": 28,
+        "motivo": "salto a tasa objetivo 60%",
+        "dificultad": "mas_dificil"
+      },
+      {
+        "t_s": 280,
+        "banda": "high_alpha",
+        "accion": "sube",
+        "umbral_antes": 0.7957,
+        "umbral_despues": 0.9173,
+        "tasa_exito": 0.75,
+        "segundos_validos": 28,
+        "motivo": "salto a tasa objetivo 60%",
+        "dificultad": "mas_dificil"
+      },
+      {
+        "t_s": 280,
+        "banda": "high_beta",
+        "accion": "sin_cambio",
+        "umbral_antes": 1.2259,
+        "umbral_despues": 1.2259,
+        "tasa_exito": 0.536,
+        "segundos_validos": 28,
+        "motivo": "tasa dentro del rango"
+      },
+      {
+        "t_s": 290,
+        "banda": "low_alpha",
+        "accion": "sube",
+        "umbral_antes": 1.0206,
+        "umbral_despues": 1.0859,
+        "tasa_exito": 0.778,
+        "segundos_validos": 27,
+        "motivo": "salto a tasa objetivo 60%",
+        "dificultad": "mas_dificil"
+      },
+      {
+        "t_s": 290,
+        "banda": "high_alpha",
+        "accion": "sube",
+        "umbral_antes": 0.9173,
+        "umbral_despues": 0.9932,
+        "tasa_exito": 0.704,
+        "segundos_validos": 27,
+        "motivo": "salto a tasa objetivo 60%",
+        "dificultad": "mas_dificil"
+      },
+      {
+        "t_s": 320,
+        "banda": "low_alpha",
+        "accion": "sin_cambio",
+        "umbral_antes": 1.0859,
+        "umbral_despues": 1.0859,
+        "tasa_exito": 0.387,
+        "segundos_validos": 31,
+        "motivo": "tasa dentro del rango"
+      },
+      {
+        "t_s": 320,
+        "banda": "high_alpha",
+        "accion": "sin_cambio",
+        "umbral_antes": 0.9932,
+        "umbral_despues": 0.9932,
+        "tasa_exito": 0.387,
+        "segundos_validos": 31,
+        "motivo": "tasa dentro del rango"
+      },
+      {
+        "t_s": 320,
+        "banda": "high_beta",
+        "accion": "sin_cambio",
+        "umbral_antes": 1.2259,
+        "umbral_despues": 1.2259,
+        "tasa_exito": 0.355,
+        "segundos_validos": 31,
+        "motivo": "tasa dentro del rango"
+      },
+      {
+        "t_s": 330,
+        "banda": "high_alpha",
+        "accion": "baja",
+        "umbral_antes": 0.9932,
+        "umbral_despues": 0.9108,
+        "tasa_exito": 0.3,
+        "segundos_validos": 30,
+        "motivo": "salto a tasa objetivo 40%",
+        "dificultad": "mas_facil"
+      },
+      {
+        "t_s": 360,
+        "banda": "low_alpha",
+        "accion": "sin_cambio",
+        "umbral_antes": 1.0859,
+        "umbral_despues": 1.0859,
+        "tasa_exito": 0.615,
+        "segundos_validos": 26,
+        "motivo": "tasa dentro del rango"
+      },
+      {
+        "t_s": 360,
+        "banda": "high_alpha",
+        "accion": "sube",
+        "umbral_antes": 0.9108,
+        "umbral_despues": 1.0532,
+        "tasa_exito": 0.769,
+        "segundos_validos": 26,
+        "motivo": "salto a tasa objetivo 60%",
+        "dificultad": "mas_dificil"
+      },
+      {
+        "t_s": 360,
+        "banda": "high_beta",
+        "accion": "sube",
+        "umbral_antes": 1.2259,
+        "umbral_despues": 1.3099,
+        "tasa_exito": 0.269,
+        "segundos_validos": 26,
+        "motivo": "fórmula de la referencia",
+        "dificultad": "mas_facil"
+      },
+      {
+        "t_s": 380,
+        "banda": "low_alpha",
+        "accion": "sube",
+        "umbral_antes": 1.0859,
+        "umbral_despues": 1.1779,
+        "tasa_exito": 0.72,
+        "segundos_validos": 25,
+        "motivo": "salto a tasa objetivo 60%",
+        "dificultad": "mas_dificil"
+      },
+      {
+        "t_s": 390,
+        "banda": "high_beta",
+        "accion": "baja",
+        "umbral_antes": 1.3099,
+        "umbral_despues": 1.2444,
+        "tasa_exito": 0.75,
+        "segundos_validos": 24,
+        "motivo": "paso mínimo 5%",
+        "dificultad": "mas_dificil"
+      },
+      {
+        "t_s": 400,
+        "banda": "low_alpha",
+        "accion": "sin_cambio",
+        "umbral_antes": 1.1779,
+        "umbral_despues": 1.1779,
+        "tasa_exito": 0.345,
+        "segundos_validos": 29,
+        "motivo": "tasa dentro del rango"
+      },
+      {
+        "t_s": 400,
+        "banda": "high_alpha",
+        "accion": "baja",
+        "umbral_antes": 1.0532,
+        "umbral_despues": 0.9126,
+        "tasa_exito": 0.138,
+        "segundos_validos": 29,
+        "motivo": "fórmula de la referencia",
+        "dificultad": "mas_facil"
+      },
+      {
+        "t_s": 400,
+        "banda": "high_beta",
+        "accion": "sin_cambio",
+        "umbral_antes": 1.2444,
+        "umbral_despues": 1.2444,
+        "tasa_exito": 0.69,
+        "segundos_validos": 29,
+        "motivo": "tasa dentro del rango"
+      },
+      {
+        "t_s": 410,
+        "banda": "low_alpha",
+        "accion": "baja",
+        "umbral_antes": 1.1779,
+        "umbral_despues": 1.0758,
+        "tasa_exito": 0.226,
+        "segundos_validos": 31,
+        "motivo": "fórmula de la referencia",
+        "dificultad": "mas_facil"
+      },
+      {
+        "t_s": 440,
+        "banda": "low_alpha",
+        "accion": "baja",
+        "umbral_antes": 1.0758,
+        "umbral_despues": 0.9837,
+        "tasa_exito": 0.25,
+        "segundos_validos": 32,
+        "motivo": "fórmula de la referencia",
+        "dificultad": "mas_facil"
+      },
+      {
+        "t_s": 440,
+        "banda": "high_alpha",
+        "accion": "sin_cambio",
+        "umbral_antes": 0.9126,
+        "umbral_despues": 0.9126,
+        "tasa_exito": 0.562,
+        "segundos_validos": 32,
+        "motivo": "tasa dentro del rango"
+      },
+      {
+        "t_s": 440,
+        "banda": "high_beta",
+        "accion": "sin_cambio",
+        "umbral_antes": 1.2444,
+        "umbral_despues": 1.2444,
+        "tasa_exito": 0.531,
+        "segundos_validos": 32,
+        "motivo": "tasa dentro del rango"
+      },
+      {
+        "t_s": 480,
+        "banda": "low_alpha",
+        "accion": "sin_cambio",
+        "umbral_antes": 0.9837,
+        "umbral_despues": 0.9837,
+        "tasa_exito": 0.577,
+        "segundos_validos": 26,
+        "motivo": "tasa dentro del rango"
+      },
+      {
+        "t_s": 480,
+        "banda": "high_alpha",
+        "accion": "sin_cambio",
+        "umbral_antes": 0.9126,
+        "umbral_despues": 0.9126,
+        "tasa_exito": 0.385,
+        "segundos_validos": 26,
+        "motivo": "tasa dentro del rango"
+      },
+      {
+        "t_s": 480,
+        "banda": "high_beta",
+        "accion": "sin_cambio",
+        "umbral_antes": 1.2444,
+        "umbral_despues": 1.2444,
+        "tasa_exito": 0.654,
+        "segundos_validos": 26,
+        "motivo": "tasa dentro del rango"
+      },
+      {
+        "t_s": 490,
+        "banda": "low_alpha",
+        "accion": "sube",
+        "umbral_antes": 0.9837,
+        "umbral_despues": 1.0363,
+        "tasa_exito": 0.76,
+        "segundos_validos": 25,
+        "motivo": "salto a tasa objetivo 60%",
+        "dificultad": "mas_dificil"
+      },
+      {
+        "t_s": 500,
+        "banda": "high_beta",
+        "accion": "baja",
+        "umbral_antes": 1.2444,
+        "umbral_despues": 1.1821,
+        "tasa_exito": 0.741,
+        "segundos_validos": 27,
+        "motivo": "paso mínimo 5%",
+        "dificultad": "mas_dificil"
+      },
+      {
+        "t_s": 520,
+        "banda": "low_alpha",
+        "accion": "sin_cambio",
+        "umbral_antes": 1.0363,
+        "umbral_despues": 1.0363,
+        "tasa_exito": 0.516,
+        "segundos_validos": 31,
+        "motivo": "tasa dentro del rango"
+      },
+      {
+        "t_s": 520,
+        "banda": "high_alpha",
+        "accion": "sin_cambio",
+        "umbral_antes": 0.9126,
+        "umbral_despues": 0.9126,
+        "tasa_exito": 0.387,
+        "segundos_validos": 31,
+        "motivo": "tasa dentro del rango"
+      },
+      {
+        "t_s": 520,
+        "banda": "high_beta",
+        "accion": "sin_cambio",
+        "umbral_antes": 1.1821,
+        "umbral_despues": 1.1821,
+        "tasa_exito": 0.677,
+        "segundos_validos": 31,
+        "motivo": "tasa dentro del rango"
+      }
+    ]
+  },
+  "raw_eeg": {
+    "archivo": "crudo/eeg_crudo.csv",
+    "canales": [
+      "TP9",
+      "AF7",
+      "AF8",
+      "TP10"
+    ],
+    "sample_rate_hz": 256,
+    "muestras": 142440,
+    "duracion_s": 556.4,
+    "entrenamiento_empieza_en_muestra": 7956,
+    "unidades": "uV, sin filtrar (tal como llega del Muse). fase: 0 calibracion, 1 entrenamiento, 2 pausa.",
+    "privacidad": "Solo local. No se comparte con P4 (no esta en data/para_p4)."
+  }
+}

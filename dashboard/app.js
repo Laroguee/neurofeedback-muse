@@ -50,6 +50,14 @@
       descInhibit: 'Mantener la mente activa evitando la desconexión',
       role: 'reward'
     },
+    high_alpha: {
+      displayName: 'Claridad Mental',
+      shortName: 'Claridad Mental (Alfa Alta)',
+      humanSkill: 'la claridad mental y el estado de alerta sereno',
+      descReward: 'Fortalecer la presencia mental despejada y sin tensión',
+      descInhibit: 'Equilibrar la actividad para no sobreexigir la mente',
+      role: 'reward'
+    },
     alpha: {
       displayName: 'Relajación Consciente',
       shortName: 'Relajación Consciente (Alfa)',
