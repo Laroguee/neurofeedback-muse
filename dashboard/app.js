@@ -1,7 +1,8 @@
 /**
- * Neurofeedback Session Summary Engine (Responsive + Draft Pie Summary Edition)
- * Soporta Vista Resumen Pastel (Sol / Nube / Tormenta), Vista Clínica por Bandas,
- * carga combinada de CSV + meta.json y todos los casos de nuevos_entrenamientos.
+ * Neurofeedback Session Summary Engine (Client-Friendly Edition)
+ * Incorpora la paleta Boceto por defecto, etiquetas "Muy bien / Bien / Fuera de zona",
+ * explicación transparente de Score e insignia, resumen narrativo en lenguaje común,
+ * curva continua sin cortes y métricas explicadas paso a paso para el cliente.
  */
 
 (function () {
@@ -15,84 +16,89 @@
   let currentMetrics = null;
   let allBandsMetrics = {};
 
-  // Estado del Resumen Pastel (Draft)
+  // Estado del Resumen Pastel (Boceto)
   let currentSectionView = 'both'; // 'both' | 'draft' | 'clinical'
   let pieScope = 'all';            // 'all' o nombre de banda individual
-  let pieCalcMode = 'zones';       // 'zones' (Promedio Zonas) | 'synergy' (Sinergia Bandas)
-  let piePalette = 'traffic';      // 'traffic' (Verde/Amarillo/Rojo) | 'weather' (Amarillo/Celeste/Gris)
+  let pieCalcMode = 'zones';       // 'zones' (Promedio por nivel) | 'synergy' (Equilibrio simultáneo)
+  let piePalette = 'weather';      // Paleta del Boceto fija como predeterminada
   let hoveredPieSlice = null;
   let lastPieSlices = [];
 
   let metadata = window.DEFAULT_METADATA || {
     session_id: 'sim-001',
-    protocol_name: 'Foco Clínico · SMR',
+    protocol_name: 'Foco y Calma',
     device: 'Muse 2',
     channels: ['TP9', 'AF7', 'AF8', 'TP10'],
     sampling_rate: 256
   };
 
+  // Nombres y descripciones traducidos a lenguaje común para el cliente
   const BAND_CONFIG = {
     low_beta: {
-      displayName: 'Beta Baja (SMR)',
-      freq: '12-15 Hz',
-      descReward: 'Foco sostenido y tranquilidad motora',
-      descInhibit: 'Reducir hipervigilancia en SMR',
+      displayName: 'Atención Sostenida',
+      shortName: 'Atención Sostenida (Beta Baja)',
+      humanSkill: 'la atención sostenida y la presencia mental',
+      descReward: 'Mantener la mente atenta, concentrada y en calma',
+      descInhibit: 'Relajar el exceso de alerta para descansar la mente',
       role: 'reward'
     },
     low_alpha: {
-      displayName: 'Alfa Baja',
-      freq: '8-10 Hz',
-      descReward: 'Relajación interna y calma atenta',
-      descInhibit: 'Evitar desconexión por alfa lenta',
+      displayName: 'Calma Mental',
+      shortName: 'Calma Mental (Alfa Baja)',
+      humanSkill: 'la calma mental y la relajación tranquila',
+      descReward: 'Fomentar un estado de paz interior y mente despejada',
+      descInhibit: 'Mantener la mente activa evitando la desconexión',
       role: 'reward'
     },
     alpha: {
-      displayName: 'Alfa',
-      freq: '8-12 Hz',
-      descReward: 'Relajación consciente y calma alerta',
-      descInhibit: 'Disminuir dispersión alfa',
+      displayName: 'Relajación Consciente',
+      shortName: 'Relajación Consciente (Alfa)',
+      humanSkill: 'la relajación consciente y la serenidad',
+      descReward: 'Aumentar la sensación de tranquilidad con mente despierta',
+      descInhibit: 'Disminuir la dispersión para sostener el foco',
       role: 'reward'
     },
     theta: {
-      displayName: 'Theta',
-      freq: '4-8 Hz',
-      descReward: 'Creatividad, internalización y calma profunda',
-      descInhibit: 'Inhibir somnolencia y mente errante',
+      displayName: 'Serenidad Interior',
+      shortName: 'Serenidad Interior (Theta)',
+      humanSkillReward: 'la relajación profunda y la calma interior',
+      humanSkillInhibit: 'el mantener tu mente despierta y enfocada',
+      descReward: 'Alcanzar un estado de calma profunda y soltar preocupaciones',
+      descInhibit: 'Mantener la mente despierta evitando la somnolencia o distracción',
       role: 'inhibit'
     },
     high_beta: {
-      displayName: 'Beta Alta',
-      freq: '20-30 Hz',
-      descReward: 'Activación cognitiva rápida',
-      descInhibit: 'Inhibir tensión muscular, estrés y rumiación',
+      displayName: 'Control de Tensión',
+      shortName: 'Control de Tensión (Beta Alta)',
+      humanSkill: 'el control de la tensión mental y de los pensamientos acelerados',
+      descReward: 'Activar la rapidez mental',
+      descInhibit: 'Disminuir el estrés, la prisa mental y los pensamientos acelerados',
       role: 'inhibit'
     },
     beta: {
-      displayName: 'Beta',
-      freq: '15-20 Hz',
-      descReward: 'Atención activa y procesamiento cognitivo',
-      descInhibit: 'Reducir sobrecarga cognitiva',
+      displayName: 'Concentración Activa',
+      shortName: 'Concentración Activa (Beta)',
+      humanSkill: 'la concentración activa en tareas',
+      descReward: 'Sostener el enfoque mental activo',
+      descInhibit: 'Reducir el agotamiento por exceso de esfuerzo mental',
       role: 'reward'
     },
     delta: {
-      displayName: 'Delta',
-      freq: '0.5-4 Hz',
-      descReward: 'Recuperación profunda',
-      descInhibit: 'Inhibir desconexión o artefacto de movimiento',
+      displayName: 'Descanso Profundo',
+      shortName: 'Descanso Profundo (Delta)',
+      humanSkill: 'la estabilidad y quietud durante el ejercicio',
+      descReward: 'Favorecer la recuperación profunda',
+      descInhibit: 'Evitar el cansancio profundo durante el entrenamiento',
       role: 'inhibit'
     }
   };
 
+  // Paleta del Boceto (Preferida por la supervisora)
   const PALETTES = {
-    traffic: {
-      sun: { main: '#10B981', light: '#34D399', bg: 'rgba(16, 185, 129, 0.16)', border: 'rgba(16, 185, 129, 0.4)' },
-      cloud: { main: '#F59E0B', light: '#FBBF24', bg: 'rgba(245, 158, 11, 0.16)', border: 'rgba(245, 158, 11, 0.4)' },
-      storm: { main: '#EF4444', light: '#F87171', bg: 'rgba(239, 68, 68, 0.16)', border: 'rgba(239, 68, 68, 0.4)' }
-    },
     weather: {
-      sun: { main: '#FACC15', light: '#FDE047', bg: 'rgba(250, 204, 21, 0.16)', border: 'rgba(250, 204, 21, 0.4)' },
-      cloud: { main: '#38BDF8', light: '#7DD3FC', bg: 'rgba(56, 189, 248, 0.16)', border: 'rgba(56, 189, 248, 0.4)' },
-      storm: { main: '#64748B', light: '#94A3B8', bg: 'rgba(100, 116, 139, 0.2)', border: 'rgba(148, 163, 184, 0.4)' }
+      sun: { main: '#FACC15', light: '#FDE047', bg: 'rgba(250, 204, 21, 0.15)', border: 'rgba(250, 204, 21, 0.42)' },
+      cloud: { main: '#38BDF8', light: '#7DD3FC', bg: 'rgba(56, 189, 248, 0.15)', border: 'rgba(56, 189, 248, 0.42)' },
+      storm: { main: '#64748B', light: '#94A3B8', bg: 'rgba(100, 116, 139, 0.18)', border: 'rgba(148, 163, 184, 0.38)' }
     }
   };
 
@@ -148,7 +154,7 @@
     });
   }
 
-  // Conmutador entre Vista Completa, Resumen Pastel (Draft) y Ondas por Banda (Clínico)
+  // Conmutador entre Vista Completa, Resumen General y Detalle por Área
   function setupSectionViewSwitcher() {
     const switchBtns = document.querySelectorAll('.section-switch-btn');
     switchBtns.forEach(btn => {
@@ -193,16 +199,6 @@
       });
     }
 
-    const paletteBtns = document.querySelectorAll('.palette-btn');
-    paletteBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        piePalette = btn.getAttribute('data-palette') || 'traffic';
-        paletteBtns.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        if (rawData.length > 0) renderDraftSummary();
-      });
-    });
-
     // Interacción con el canvas del pastel
     if (pieCanvas) {
       pieCanvas.addEventListener('mousemove', (e) => {
@@ -221,7 +217,7 @@
     if (draftCheckBtn) {
       draftCheckBtn.addEventListener('click', () => {
         if (!rawData.length) return;
-        alert(`✅ Resumen de la Sesión #${metadata.session_id} confirmado.\nTiempo enfocado (☀️ + ☁️): ${document.getElementById('pie-total-focus-val')?.textContent || '--'}`);
+        alert(`✅ Resumen de la Sesión #${metadata.session_id} confirmado.\nTiempo en tu Zona Objetivo (Muy bien + Bien): ${document.getElementById('pie-total-focus-val')?.textContent || '--'}`);
       });
     }
   }
@@ -293,10 +289,10 @@
     // Acciones
     document.getElementById('btn-complete-session').addEventListener('click', () => {
       if (!rawData.length) {
-        alert('Por favor carga un archivo CSV de sesión primero.');
+        alert('Por favor selecciona o carga una sesión primero.');
         return;
       }
-      alert(`✅ Sesión ${metadata.session_id} archivada correctamente.\nMétricas y tendencias sincronizadas.`);
+      alert(`✅ ¡Felicidades por completar la revisión de tu Sesión #${metadata.session_id}!`);
     });
     document.getElementById('btn-export-summary').addEventListener('click', exportSummaryJSON);
   }
@@ -376,7 +372,7 @@
       statusBadge.className = 'badge waiting-badge';
       statusBadge.innerHTML = '<span class="pulse-dot amber"></span> Esperando datos';
     }
-    document.getElementById('protocol-badge').textContent = 'Dashboard de Análisis Clínico';
+    document.getElementById('protocol-badge').textContent = 'Resumen de tu Entrenamiento';
     document.getElementById('session-id-display').textContent = 'Carga de Sesión';
     const durationEl = document.getElementById('quick-duration');
     if (durationEl) durationEl.textContent = '--';
@@ -396,14 +392,13 @@
     const statusBadge = document.getElementById('header-status-badge');
     if (statusBadge) {
       statusBadge.className = 'badge completed-badge';
-      statusBadge.innerHTML = '<span class="pulse-dot"></span> Sesión Finalizada';
+      statusBadge.innerHTML = '<span class="pulse-dot"></span> Sesión Completada';
     }
 
     applySectionVisibility();
   }
 
   function loadPresetSession(presetId) {
-    // Resaltar pill activo en la barra superior
     document.querySelectorAll('.preset-pill-btn').forEach(btn => {
       btn.classList.toggle('active', btn.getAttribute('data-preset') === presetId);
     });
@@ -415,7 +410,6 @@
       return;
     }
 
-    // Fallback a sesión simulada por defecto
     if (window.DEFAULT_CSV_RAW) {
       metadata = JSON.parse(JSON.stringify(window.DEFAULT_METADATA || {}));
       parseCSV(window.DEFAULT_CSV_RAW, metadata);
@@ -438,7 +432,6 @@
       return;
     }
 
-    // Si solo subió un meta.json y ya hay datos cargados, aplicamos los metadatos
     if (jsonFile && !csvFile) {
       const reader = new FileReader();
       reader.onload = (ev) => {
@@ -450,7 +443,7 @@
             renderCurrentBand();
             renderDraftSummary();
           } else {
-            alert('✅ Metadatos (meta.json) cargados. Ahora selecciona el archivo .csv de la sesión.');
+            alert('✅ Información de sesión cargada. Ahora selecciona el archivo .csv.');
           }
         } catch (err) {
           alert('No se pudo leer el archivo JSON: ' + err.message);
@@ -460,7 +453,6 @@
       return;
     }
 
-    // Si subió ambos (.csv + .json) o solo .csv
     if (jsonFile && csvFile) {
       const jsonReader = new FileReader();
       jsonReader.onload = (jEv) => {
@@ -485,25 +477,23 @@
   function getBandConfig(bandKey, actualRole) {
     const base = BAND_CONFIG[bandKey] || {
       displayName: bandKey.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
-      freq: '',
-      descReward: 'Aumentar amplitud en banda objetivo',
-      descInhibit: 'Reducir actividad en banda objetivo',
+      shortName: bandKey,
+      humanSkill: 'la autorregulación mental',
+      descReward: 'Aumentar tu actividad hacia la zona objetivo',
+      descInhibit: 'Disminuir la actividad para mantener la calma',
       role: actualRole || 'reward'
     };
     const role = actualRole || base.role || 'reward';
-
-    // Si meta.json trae band_ranges_hz personalizados (ej. theta: [4, 7]), usarlos
-    let freqStr = base.freq;
-    if (metadata && metadata.band_ranges_hz && metadata.band_ranges_hz[bandKey]) {
-      const [lo, hi] = metadata.band_ranges_hz[bandKey];
-      freqStr = `${lo}-${hi} Hz`;
-    }
-
     const desc = role === 'reward' ? base.descReward : base.descInhibit;
+    const humanSkill = bandKey === 'theta'
+      ? (role === 'reward' ? base.humanSkillReward : base.humanSkillInhibit)
+      : base.humanSkill;
+
     return {
       displayName: base.displayName,
-      freq: freqStr,
-      desc: freqStr ? `${freqStr} · ${desc}` : desc,
+      shortName: base.shortName || base.displayName,
+      humanSkill,
+      desc,
       role
     };
   }
@@ -531,7 +521,7 @@
 
     const hasRequired = ['t_s', 'band', 'value'].every(key => key in col);
     if (!hasRequired) {
-      alert('El CSV debe incluir al menos las columnas obligatorias: t_s, band, value\nColumnas detectadas: ' + rawHeaders.join(', '));
+      alert('El CSV debe incluir al menos las columnas: t_s, band, value');
       return;
     }
 
@@ -576,7 +566,6 @@
     rawData = parsed;
     availableBands = [...new Set(parsed.map(r => r.band))];
 
-    // Autodetectar si el session_id corresponde a uno de los presets con meta.json conocido
     const detectedId = parsed[0]?.session_id;
     if (customMeta) {
       metadata = customMeta;
@@ -591,7 +580,6 @@
       };
     }
 
-    // Calcular métricas de todas las bandas de inmediato
     allBandsMetrics = {};
     availableBands.forEach(bKey => {
       const bRows = rawData.filter(r => r.band === bKey);
@@ -618,55 +606,42 @@
 
   function inferProtocolName(bands) {
     if (bands.includes('theta') && bands.includes('low_alpha')) {
-      return 'Protocolo Rob-Train · Theta + Alfa Baja';
+      return 'Relajación Profunda y Control de Estrés';
     }
     if (bands.includes('low_beta')) {
-      return 'Protocolo de Foco Clínico · SMR';
+      return 'Atención Sostenida y Calma';
     }
     if (bands.includes('low_alpha') || bands.includes('alpha')) {
-      return 'Protocolo Alfa · Calma Alerta';
+      return 'Calma Mental y Serenidad';
     }
-    return 'Protocolo EEG Muse 2';
+    return 'Entrenamiento de Autorregulación';
   }
 
   function updateHeaderFromMetadata() {
     const firstRow = rawData[0] || {};
     const sessId = metadata.session_id || firstRow.session_id || '001';
-    document.getElementById('session-id-display').textContent = `Sesión #${sessId}`;
+    const displayId = String(sessId) === 'sim-001' ? '003' : sessId;
+    document.getElementById('session-id-display').textContent = `Sesión #${displayId}`;
 
     // Barra de progreso de sesiones (ej. 5 / 20)
-    const numMatch = String(sessId).match(/\d+/);
-    let sessNum = numMatch ? parseInt(numMatch[0], 10) : 3;
-    if (String(sessId) === 'sim-001') sessNum = 3; // Como en el boceto "Sesión #003"
+    const numMatch = String(displayId).match(/\d+/);
+    const sessNum = numMatch ? parseInt(numMatch[0], 10) : 3;
     const pctProgress = Math.min(100, Math.max(5, (sessNum / TOTAL_PROGRAM_SESSIONS) * 100));
     const fillEl = document.getElementById('session-progress-fill');
     const curEl = document.getElementById('session-progress-current');
     if (fillEl) fillEl.style.width = `${pctProgress}%`;
     if (curEl) curEl.textContent = String(sessNum);
 
-    // Duración de la sesión real
+    // Duración de la sesión
     const uniqueSeconds = new Set(rawData.map(r => r.t_s)).size;
     const durationSec = metadata.duration_s || uniqueSeconds;
     const mins = Math.floor(durationSec / 60);
     const secs = durationSec % 60;
     const durationFormatted = mins > 0
-      ? `${mins} min ${secs > 0 ? secs + ' s' : ''} (${durationSec} s)`
+      ? `${mins} min ${secs > 0 ? secs + ' s' : ''}`
       : `${durationSec} s`;
     const durationEl = document.getElementById('quick-duration');
     if (durationEl) durationEl.textContent = durationFormatted;
-
-    // Porcentaje de señal válida en el header
-    const samplingEl = document.getElementById('quick-sampling');
-    if (samplingEl) {
-      const sampleMetric = allBandsMetrics[availableBands[0]];
-      if (sampleMetric) {
-        const totalRows = sampleMetric.totalRows || durationSec;
-        const validPct = metadata.valid_pct !== undefined
-          ? metadata.valid_pct
-          : Number((((totalRows - sampleMetric.artifacts) / totalRows) * 100).toFixed(1));
-        samplingEl.textContent = `${validPct}% válida (1 Hz)`;
-      }
-    }
 
     // Fecha/hora
     const tsSource = metadata.start_time || firstRow.timestamp;
@@ -685,55 +660,16 @@
       }
     }
 
-    // Protocolo y Usuario
+    // Protocolo amigable
     const protocolBadge = document.getElementById('protocol-badge');
     if (protocolBadge) {
       const protoName = metadata.protocol_name || inferProtocolName(availableBands);
-      const userTag = metadata.usuario_id ? ` · Usuario #${metadata.usuario_id}` : '';
-      protocolBadge.textContent = `Protocolo: ${protoName}${userTag}`;
+      protocolBadge.textContent = `Entrenamiento: ${protoName}`;
     }
 
-    // Electrodos activos/referencia desde meta.json
     const electrodesText = document.getElementById('device-electrodes-text');
     if (electrodesText) {
-      if (metadata.active_electrode && metadata.reference_electrode) {
-        electrodesText.textContent = `Muse 2 · Activo: ${metadata.active_electrode} · Ref: ${metadata.reference_electrode}`;
-      } else if (metadata.channels) {
-        electrodesText.textContent = `Muse 2 · 256 Hz · ${metadata.channels.join(', ')}`;
-      } else {
-        electrodesText.textContent = 'Muse 2 · EEG 1 Hz';
-      }
-    }
-
-    // Semáforo de calidad de señal de meta.json
-    const qualityBadge = document.getElementById('header-quality-badge');
-    if (qualityBadge) {
-      if (metadata.signal_quality_flag) {
-        qualityBadge.style.display = 'inline-flex';
-        const isOk = metadata.signal_quality_flag === 'ok';
-        qualityBadge.className = `badge quality-badge ${isOk ? 'ok' : 'warning'}`;
-        qualityBadge.textContent = isOk ? '✓ Señal OK' : '⚠️ Ruido Moderado';
-      } else {
-        qualityBadge.style.display = 'none';
-      }
-    }
-
-    // Desglose de segundos inválidos por razón (meta.json)
-    const reasonsBox = document.getElementById('artifact-reasons-box');
-    const reasonsPills = document.getElementById('artifact-reasons-pills');
-    if (reasonsBox && reasonsPills) {
-      if (metadata.invalid_seconds_by_reason && Object.keys(metadata.invalid_seconds_by_reason).length > 0) {
-        reasonsBox.style.display = 'flex';
-        reasonsPills.innerHTML = '';
-        Object.entries(metadata.invalid_seconds_by_reason).forEach(([reason, secs]) => {
-          const span = document.createElement('span');
-          span.className = 'artifact-reason-chip';
-          span.textContent = `${reason}: ${secs}s`;
-          reasonsPills.appendChild(span);
-        });
-      } else {
-        reasonsBox.style.display = 'none';
-      }
+      electrodesText.textContent = 'Diadema Muse 2 · Resumen del Cliente';
     }
   }
 
@@ -752,7 +688,7 @@
   }
 
   // =========================================================================
-  // MOTOR DE RESUMEN DE PASTEL ("DRAFT" DEL BOCETO)
+  // MOTOR DE RESUMEN DE PASTEL (BOCETO CON "MUY BIEN / BIEN / FUERA DE ZONA")
   // =========================================================================
   function renderDraftSummary() {
     if (!rawData.length) return;
@@ -761,8 +697,7 @@
     const dist = computePieDistribution();
     lastPieSlices = dist.slices;
 
-    // Actualizar colores y textos de los 3 íconos climáticos superiores
-    const pal = PALETTES[piePalette] || PALETTES.traffic;
+    const pal = PALETTES.weather;
     const sunCard = document.getElementById('weather-card-sun');
     const cloudCard = document.getElementById('weather-card-cloud');
     const stormCard = document.getElementById('weather-card-storm');
@@ -800,52 +735,49 @@
       stormPctEl.style.color = pal.storm.light;
     }
 
-    // Subtítulos según modo de cálculo
+    // Subtítulos claros sin jerga
     const sunSub = document.getElementById('weather-sun-sub');
     const cloudSub = document.getElementById('weather-cloud-sub');
     const stormSub = document.getElementById('weather-storm-sub');
     if (pieCalcMode === 'synergy' && pieScope === 'all') {
-      if (sunSub) sunSub.textContent = `Todas las bandas (${availableBands.length}/${availableBands.length}) en meta`;
-      if (cloudSub) cloudSub.textContent = 'Éxito parcial (algunas bandas en meta)';
-      if (stormSub) stormSub.textContent = 'Ninguna banda en meta simultáneamente';
+      if (sunSub) sunSub.textContent = 'Todas las habilidades en meta al mismo tiempo';
+      if (cloudSub) cloudSub.textContent = 'Al menos una habilidad dentro de la meta';
+      if (stormSub) stormSub.textContent = 'Momentos fuera de la zona objetivo';
     } else {
-      if (sunSub) sunSub.textContent = 'Zona profunda / Óptimo (≥1.25×)';
-      if (cloudSub) cloudSub.textContent = 'Dentro del umbral objetivo';
-      if (stormSub) stormSub.textContent = 'Por fuera del umbral objetivo';
+      if (sunSub) sunSub.textContent = 'Superaste tu zona objetivo con holgura';
+      if (cloudSub) cloudSub.textContent = 'Te mantuviste dentro de tu zona objetivo';
+      if (stormSub) stormSub.textContent = 'Momentos de distracción o tensión';
     }
 
-    // Total enfocado (Sol + Nube)
+    // Tiempo total en Zona Objetivo (Muy bien + Bien)
     const focusedPct = dist.sunPct + dist.cloudPct;
     const focusValEl = document.getElementById('pie-total-focus-val');
     if (focusValEl) focusValEl.textContent = `${focusedPct}%`;
 
-    // Score sesión (0-100) y Sesión pasada
+    // Score de sesión (0-100) y su explicación paso a paso
     const sessionScore = dist.sessionScore;
     const pastInfo = computePastSessionScore(sessionScore);
     const curScoreEl = document.getElementById('draft-score-current');
     const pastScoreEl = document.getElementById('draft-score-past');
     const pastLabelEl = document.getElementById('draft-score-past-label');
     const deltaEl = document.getElementById('draft-score-delta');
+    const formulaTextEl = document.getElementById('score-formula-text');
 
     if (curScoreEl) curScoreEl.textContent = String(sessionScore);
     if (pastScoreEl) pastScoreEl.textContent = String(pastInfo.score);
     if (pastLabelEl) pastLabelEl.textContent = pastInfo.label;
     if (deltaEl) {
       const diff = sessionScore - pastInfo.score;
-      deltaEl.textContent = `${diff >= 0 ? '+' : ''}${diff} pts`;
+      deltaEl.textContent = `${diff >= 0 ? '+' : ''}${diff} pts vs anterior`;
       deltaEl.className = `score-delta-pill ${diff >= 0 ? 'positive' : 'negative'}`;
     }
+    if (formulaTextEl) {
+      formulaTextEl.innerHTML = `<strong>¿De dónde sale tu ${sessionScore}/100?</strong> Combina tu tiempo en Zona Objetivo (<strong>${focusedPct}% en Muy bien + Bien</strong>) con una base de participación y puntos extra por tu constancia y rachas sostenidas.`;
+    }
 
-    // Desglose por banda individual en la columna izquierda
     renderBandContributionList(pal);
-
-    // Actualizar insignia "Thriving" de la derecha
     updateThrivingBadge(focusedPct, sessionScore);
-
-    // Actualizar frase narrativa inferior
     updateNarrativeBanner(dist, focusedPct);
-
-    // Dibujar el gráfico de pastel
     drawPieChart(dist.slices);
   }
 
@@ -857,7 +789,7 @@
     const allBtn = document.createElement('button');
     allBtn.type = 'button';
     allBtn.className = `scope-pill-btn ${pieScope === 'all' ? 'active' : ''}`;
-    allBtn.textContent = `Promedio (${availableBands.length} bandas)`;
+    allBtn.textContent = `Resumen General (${availableBands.length} áreas)`;
     allBtn.addEventListener('click', () => {
       pieScope = 'all';
       renderDraftSummary();
@@ -870,7 +802,7 @@
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = `scope-pill-btn ${pieScope === bKey ? 'active' : ''}`;
-      btn.textContent = `${cfg.displayName} (${bRole === 'reward' ? '↑' : '↓'})`;
+      btn.textContent = cfg.displayName;
       btn.addEventListener('click', () => {
         pieScope = bKey;
         currentBand = bKey;
@@ -883,14 +815,13 @@
   }
 
   function computePieDistribution() {
-    const pal = PALETTES[piePalette] || PALETTES.traffic;
+    const pal = PALETTES.weather;
     let rawSun = 0;
     let rawCloud = 0;
     let rawStorm = 0;
     let totalCount = 0;
 
     if (pieScope !== 'all') {
-      // Pastel de una sola banda específica
       const m = allBandsMetrics[pieScope];
       if (m && m.totalValid > 0) {
         const sunSec = m.deepZoneSeconds;
@@ -902,7 +833,6 @@
         totalCount = m.totalValid;
       }
     } else if (pieCalcMode === 'synergy') {
-      // Modo Sinergia Simultánea: evalúa segundo a segundo cuántas bandas cumplen la meta a la vez
       const validSeconds = [...new Set(rawData.filter(r => r.valid === 1 && r.threshold !== null).map(r => r.t_s))];
       let sunSec = 0;
       let cloudSec = 0;
@@ -926,7 +856,6 @@
       rawCloud = (cloudSec / totalCount) * 100;
       rawStorm = (stormSec / totalCount) * 100;
     } else {
-      // Modo Zonas Promedio: promedia el desempeño de todas las bandas entrenadas
       let sumSun = 0;
       let sumCloud = 0;
       let sumStorm = 0;
@@ -953,12 +882,10 @@
       }
     }
 
-    // Redondear asegurando que sumen exactamente 100%
     let sunPct = Math.round(rawSun);
     let cloudPct = Math.round(rawCloud);
     let stormPct = Math.max(0, 100 - sunPct - cloudPct);
 
-    // Calcular Score de la sesión (0 - 100) coherente con el rendimiento
     const avgZonePct = availableBands.reduce((acc, b) => acc + (allBandsMetrics[b]?.totalZonePct || 0), 0) / (availableBands.length || 1);
     const avgDeepPct = availableBands.reduce((acc, b) => acc + (allBandsMetrics[b]?.deepZonePct || 0), 0) / (availableBands.length || 1);
     const avgMaxStreak = availableBands.reduce((acc, b) => acc + (allBandsMetrics[b]?.maxStreak || 0), 0) / (availableBands.length || 1);
@@ -968,34 +895,30 @@
     const slices = [
       {
         id: 'sun',
-        label: '☀️ Solecito (Muy Bien)',
-        shortLabel: '☀️',
+        label: 'Muy bien',
+        shortLabel: 'Muy bien',
         pct: sunPct,
         color: pal.sun.main,
         lightColor: pal.sun.light,
-        desc: pieCalcMode === 'synergy' && pieScope === 'all'
-          ? 'Todas las bandas en meta al mismo tiempo'
-          : 'Tiempo en Deep Zone (rendimiento óptimo)'
+        desc: 'Superaste tu zona objetivo con holgura (estado óptimo)'
       },
       {
         id: 'cloud',
-        label: '☁️ Nubecita (Bien)',
-        shortLabel: '☁️',
+        label: 'Bien',
+        shortLabel: 'Bien',
         pct: cloudPct,
         color: pal.cloud.main,
         lightColor: pal.cloud.light,
-        desc: pieCalcMode === 'synergy' && pieScope === 'all'
-          ? 'Éxito parcial entre las bandas entrenadas'
-          : 'Dentro de la zona umbral de entrenamiento'
+        desc: 'Lograste mantenerte dentro de tu zona objetivo'
       },
       {
         id: 'storm',
-        label: '⛈️ Tormenta (Fuera de Zona)',
-        shortLabel: '⛈️',
+        label: 'Fuera de zona',
+        shortLabel: 'Fuera de zona',
         pct: stormPct,
         color: pal.storm.main,
         lightColor: pal.storm.light,
-        desc: 'Actividad fuera del umbral o sobre-activación'
+        desc: 'Momentos en que tu mente salió de la zona meta'
       }
     ];
 
@@ -1040,11 +963,11 @@
 
       const row = document.createElement('div');
       row.className = 'band-contrib-row';
-      row.title = `Clic para ver el pastel y curva de ${cfg.displayName}`;
+      row.title = `Clic para ver el detalle de ${cfg.displayName}`;
       row.innerHTML = `
         <div class="band-contrib-top">
-          <span>${cfg.displayName} <span class="role-mini">(${bRole === 'reward' ? 'Reforzar' : 'Inhibir'})</span></span>
-          <strong style="color:${pal.sun.light}">${Math.round(m.totalZonePct)}% en zona</strong>
+          <span>${cfg.displayName}</span>
+          <strong style="color:${pal.cloud.light}">${Math.round(m.totalZonePct)}% en zona</strong>
         </div>
         <div class="band-contrib-bar">
           <div class="band-contrib-seg" style="width:${bSun}%; background:${pal.sun.main}"></div>
@@ -1065,83 +988,95 @@
 
   function updateThrivingBadge(focusedPct, sessionScore) {
     const titleEl = document.getElementById('thriving-status-title');
+    const subTitleEl = document.getElementById('thriving-status-subtitle');
     const descEl = document.getElementById('thriving-status-desc');
+    const originTextEl = document.getElementById('thriving-origin-text');
     const badgeCard = document.getElementById('thriving-badge-card');
+
+    const tierThriving = document.getElementById('tier-thriving');
+    const tierFocused = document.getElementById('tier-focused');
+    const tierBuilding = document.getElementById('tier-building');
+
+    [tierThriving, tierFocused, tierBuilding].forEach(el => {
+      if (el) el.classList.remove('active-tier');
+    });
+
     if (!titleEl || !descEl) return;
 
-    if (focusedPct >= 60 || sessionScore >= 75) {
+    if (focusedPct >= 60) {
       titleEl.textContent = 'Thriving!';
-      titleEl.style.color = '#34D399';
-      descEl.textContent = '¡Gran dominio! Tu cerebro sostuvo el foco y la autorregulación de forma sobresaliente.';
-      if (badgeCard) badgeCard.style.borderColor = 'rgba(52, 211, 153, 0.45)';
-    } else if (focusedPct >= 38 || sessionScore >= 58) {
+      titleEl.style.color = '#FACC15';
+      if (subTitleEl) subTitleEl.textContent = '¡Dominio Sobresaliente!';
+      descEl.textContent = 'Pasaste la mayor parte de la sesión dentro de tu zona objetivo, logrando una excelente autorregulación.';
+      if (badgeCard) badgeCard.style.borderColor = 'rgba(250, 204, 21, 0.45)';
+      if (tierThriving) tierThriving.classList.add('active-tier');
+    } else if (focusedPct >= 35) {
       titleEl.textContent = 'Focused!';
       titleEl.style.color = '#38BDF8';
-      descEl.textContent = 'Buen entrenamiento: lograste conectar con la zona objetivo de forma consistente.';
+      if (subTitleEl) subTitleEl.textContent = '¡Mente Enfocada!';
+      descEl.textContent = 'Mantuviste una conexión constante con tu zona objetivo, recuperando el enfoque cada vez que te distrajiste.';
       if (badgeCard) badgeCard.style.borderColor = 'rgba(56, 189, 248, 0.45)';
+      if (tierFocused) tierFocused.classList.add('active-tier');
     } else {
-      titleEl.textContent = 'En Progreso';
-      titleEl.style.color = '#FBBF24';
-      descEl.textContent = 'Sesión de adaptación: cada entrenamiento fortalece tu capacidad de entrar en zona.';
-      if (badgeCard) badgeCard.style.borderColor = 'rgba(251, 191, 36, 0.4)';
+      titleEl.textContent = 'En Práctica';
+      titleEl.style.color = '#94A3B8';
+      if (subTitleEl) subTitleEl.textContent = 'Etapa de Adaptación';
+      descEl.textContent = 'Tu mente está reconociendo el ejercicio. Con cada sesión te será más natural entrar en tu zona objetivo.';
+      if (badgeCard) badgeCard.style.borderColor = 'rgba(148, 163, 184, 0.4)';
+      if (tierBuilding) tierBuilding.classList.add('active-tier');
+    }
+
+    if (originTextEl) {
+      originTextEl.innerHTML = `Alcanzaste este nivel porque hoy estuviste el <strong>${focusedPct}% del tiempo</strong> dentro de tu <strong>Zona Objetivo (Muy bien + Bien)</strong>:`;
     }
   }
 
-  function countOverActivationEpisodes() {
-    // Cuenta episodios donde high_beta (u otra banda inhibit) superó su umbral con fuerza (>= 1.15x) por al menos 2s seguidos
-    const inhibitBand = availableBands.find(b => b === 'high_beta') || availableBands.find(b => (rawData.find(r => r.band === b)?.role) === 'inhibit');
-    if (!inhibitBand) return 0;
-
-    const rows = rawData.filter(r => r.band === inhibitBand);
-    let episodes = 0;
-    let curRun = 0;
-
-    rows.forEach(r => {
-      if (r.valid === 1 && r.value !== null && r.threshold !== null) {
-        const isSpike = r.value > r.threshold * 1.15;
-        if (isSpike) {
-          curRun++;
-        } else {
-          if (curRun >= 2) episodes++;
-          curRun = 0;
-        }
-      } else {
-        if (curRun >= 2) episodes++;
-        curRun = 0;
-      }
-    });
-    if (curRun >= 2) episodes++;
-    return episodes;
-  }
-
+  // Comentario narrativo 100% en lenguaje común (sin exceso de números ni jerga técnica)
   function updateNarrativeBanner(dist, focusedPct) {
     const textEl = document.getElementById('draft-narrative-text');
     if (!textEl) return;
 
-    const overActivations = countOverActivationEpisodes();
-    const spikePhrase = overActivations === 0
-      ? 'sin episodios fuertes de sobre-activación'
-      : (overActivations === 1
-          ? 'y solo se sobre-activó <em>1 vez</em>'
-          : `y solo se sobre-activó <em>${overActivations} veces</em>`);
+    // Ordenar las habilidades entrenadas de mejor a menor logro para explicarlo en palabras cotidianas
+    const rankedBands = availableBands
+      .map(bKey => {
+        const m = allBandsMetrics[bKey];
+        const role = rawData.find(r => r.band === bKey)?.role || 'reward';
+        const cfg = getBandConfig(bKey, role);
+        return {
+          key: bKey,
+          role,
+          pct: m ? m.totalZonePct : 0,
+          humanSkill: cfg.humanSkill,
+          displayName: cfg.displayName
+        };
+      })
+      .sort((a, b) => b.pct - a.pct);
 
-    // Identificar la mejor banda para enriquecer el mensaje
-    let bestBandName = '';
-    let bestBandPct = -1;
-    availableBands.forEach(bKey => {
-      const m = allBandsMetrics[bKey];
-      const role = rawData.find(r => r.band === bKey)?.role || 'reward';
-      if (m && m.totalZonePct > bestBandPct) {
-        bestBandPct = m.totalZonePct;
-        bestBandName = getBandConfig(bKey, role).displayName;
-      }
-    });
+    const bestSkill = rankedBands[0];
+    const leastSkill = rankedBands.length > 1 ? rankedBands[rankedBands.length - 1] : null;
 
-    const bestBandExtra = bestBandName
-      ? ` Destacaste en <strong>${bestBandName} (${Math.round(bestBandPct)}% en meta)</strong>.`
-      : '';
+    let openingSentence = '';
+    if (focusedPct >= 60) {
+      openingSentence = 'Hoy tu mente logró mantener un estado de calma y concentración muy sólido durante la mayor parte del entrenamiento.';
+    } else if (focusedPct >= 35) {
+      openingSentence = 'Durante la sesión de hoy lograste conectar de forma constante con el estado mental deseado, retomando la calma con facilidad cuando surgieron distracciones.';
+    } else {
+      openingSentence = 'En la sesión de hoy tu mente estuvo en una etapa de exploración y adaptación, dando pasos importantes para aprender a encontrar la calma.';
+    }
 
-    textEl.innerHTML = `Hoy tu cerebro se mantuvo enfocado el <strong>${focusedPct}%</strong> del tiempo (${dist.sunPct}% ☀️ + ${dist.cloudPct}% ☁️) ${spikePhrase}.${bestBandExtra}`;
+    let strengthSentence = '';
+    if (bestSkill) {
+      strengthSentence = ` Tu mayor fortaleza hoy fue <strong>${bestSkill.humanSkill}</strong>.`;
+    }
+
+    let nextStepSentence = '';
+    if (leastSkill && leastSkill.key !== bestSkill.key && (bestSkill.pct - leastSkill.pct) >= 8) {
+      nextStepSentence = ` En tus próximas sesiones seguiremos practicando <em>${leastSkill.humanSkill}</em> para que te resulte cada vez más natural.`;
+    } else {
+      nextStepSentence = ' Mantuviste un equilibrio muy parejo en todas las habilidades entrenadas.';
+    }
+
+    textEl.innerHTML = `${openingSentence}${strengthSentence}${nextStepSentence}`;
   }
 
   function drawPieChart(slices) {
@@ -1159,9 +1094,9 @@
 
     const cx = w / 2;
     const cy = h / 2;
-    const radius = Math.min(w, h) * 0.33;
+    const radius = Math.min(w, h) * 0.32;
 
-    let startAngle = -Math.PI / 2; // Empezar arriba a las 12 en punto
+    let startAngle = -Math.PI / 2;
 
     slices.forEach((slice, idx) => {
       if (slice.pct <= 0) return;
@@ -1180,7 +1115,6 @@
       const ox = cx + Math.cos(midAngle) * offset;
       const oy = cy + Math.sin(midAngle) * offset;
 
-      // Rebanada del pastel
       pieCtx.save();
       pieCtx.beginPath();
       pieCtx.moveTo(ox, oy);
@@ -1192,18 +1126,16 @@
       pieCtx.shadowBlur = isHovered ? 16 : 8;
       pieCtx.fill();
 
-      // Borde nítido estilo boceto
       pieCtx.lineWidth = 2.5;
       pieCtx.strokeStyle = '#080D18';
       pieCtx.stroke();
       pieCtx.restore();
 
-      // Etiqueta externa con porcentaje grande (estilo 42%, 26%, 32% del boceto)
-      const labelDist = radius + 28;
+      // Etiqueta externa con porcentaje y nombre claro ("Muy bien", "Bien", "Fuera de zona")
+      const labelDist = radius + 30;
       const lx = cx + Math.cos(midAngle) * labelDist;
       const ly = cy + Math.sin(midAngle) * labelDist;
 
-      // Línea guía corta
       const lineStartR = radius + 4;
       const lineEndR = radius + 14;
       pieCtx.beginPath();
@@ -1217,16 +1149,15 @@
       pieCtx.fillStyle = slice.lightColor;
       pieCtx.textAlign = 'center';
       pieCtx.textBaseline = 'middle';
-      pieCtx.fillText(`${slice.pct}%`, lx, ly - 6);
+      pieCtx.fillText(`${slice.pct}%`, lx, ly - 7);
 
-      pieCtx.font = '600 12px "Plus Jakarta Sans", sans-serif';
+      pieCtx.font = '600 11px "Plus Jakarta Sans", sans-serif';
       pieCtx.fillStyle = '#E2E8F0';
-      pieCtx.fillText(slice.shortLabel, lx, ly + 10);
+      pieCtx.fillText(slice.shortLabel, lx, ly + 8);
 
       startAngle = endAngle;
     });
 
-    // Círculo exterior sutil para dar acabado de medalla/reloj como el boceto
     pieCtx.beginPath();
     pieCtx.arc(cx, cy, radius + 1, 0, Math.PI * 2);
     pieCtx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
@@ -1245,7 +1176,7 @@
     const dx = mx - cx;
     const dy = my - cy;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    const radius = Math.min(rect.width, rect.height) * 0.33;
+    const radius = Math.min(rect.width, rect.height) * 0.32;
 
     if (dist > radius + 12) {
       if (hoveredPieSlice !== null) {
@@ -1277,10 +1208,10 @@
       const s = lastPieSlices[foundIdx];
       pieTooltip.innerHTML = `
         <strong style="color:${s.lightColor}">${s.label}: ${s.pct}%</strong>
-        <div style="margin-top:3px; color:#94A3B8; font-size:0.68rem;">${s.desc}</div>
+        <div style="margin-top:3px; color:#CBD5E1; font-size:0.69rem;">${s.desc}</div>
       `;
       let left = mx + 14;
-      if (left + 190 > rect.width) left = mx - 195;
+      if (left + 195 > rect.width) left = mx - 200;
       let top = my - 30;
       if (top < 6) top = 8;
       pieTooltip.style.left = `${left}px`;
@@ -1290,7 +1221,7 @@
   }
 
   // =========================================================================
-  // MOTOR DE GRÁFICO TEMPORAL Y MÉTRICAS CLÍNICAS POR BANDA
+  // MOTOR DE GRÁFICO TEMPORAL CONTINUO Y MÉTRICAS EXPLICADAS
   // =========================================================================
   function renderTimeAxisMarkers(durationSec) {
     const container = document.getElementById('time-axis-container');
@@ -1311,7 +1242,6 @@
       container.appendChild(span);
     }
 
-    // Si el último segundo supera por más de 15s la última marca de minuto (ej. 343s -> 05:43), mostrar la marca final
     if (durationSec % step >= 15) {
       const m = Math.floor(durationSec / 60);
       const s = durationSec % 60;
@@ -1332,7 +1262,7 @@
       btn.className = `band-tab ${cfg.role} ${bandKey === currentBand ? 'active' : ''}`;
       btn.innerHTML = `
         <span>${cfg.displayName}</span>
-        <span class="role-badge">${cfg.role === 'reward' ? 'Reforzar ↑' : 'Inhibir ↓'}</span>
+        <span class="role-badge">${cfg.role === 'reward' ? 'Meta: Aumentar ↑' : 'Meta: Disminuir ↓'}</span>
       `;
       btn.addEventListener('click', () => {
         currentBand = bandKey;
@@ -1360,7 +1290,7 @@
     const actualRole = bandRows[0].role || 'reward';
     const cfg = getBandConfig(currentBand, actualRole);
 
-    bandRoleIndicator.textContent = actualRole === 'reward' ? 'REWARD (AUMENTAR)' : 'INHIBIT (REDUCIR)';
+    bandRoleIndicator.textContent = actualRole === 'reward' ? 'Meta: Aumentar' : 'Meta: Calmar';
     bandRoleIndicator.className = `role-pill ${actualRole}`;
     bandDescriptionText.textContent = `${cfg.displayName} · ${cfg.desc}`;
 
@@ -1393,7 +1323,7 @@
     const totalZonePct = totalValid > 0 ? (zoneSeconds / totalValid) * 100 : 0;
     const deepZonePct = totalValid > 0 ? (deepZoneSeconds / totalValid) * 100 : 0;
 
-    // Rachas continuas
+    // Rachas continuas (uniendo a través de muestras válidas consecutivas)
     const streaks = [];
     let currentStreak = 0;
     const sortedRows = [...rows].sort((a, b) => a.t_s - b.t_s);
@@ -1406,9 +1336,6 @@
           if (currentStreak > 0) streaks.push(currentStreak);
           currentStreak = 0;
         }
-      } else {
-        if (currentStreak > 0) streaks.push(currentStreak);
-        currentStreak = 0;
       }
     });
     if (currentStreak > 0) streaks.push(currentStreak);
@@ -1422,7 +1349,6 @@
     });
     const xp = Math.round(feedbackScore * 0.45);
 
-    // Desglose Minuto a Minuto dinámico según la duración real de la sesión
     const maxT = Math.max(...rows.map(r => r.t_s), 60);
     const totalMinutesCount = Math.max(1, Math.ceil(maxT / 60));
     const minutes = [];
@@ -1480,43 +1406,57 @@
 
   function updateMetricsUI(m, cfg) {
     document.getElementById('metric-total-zone').textContent = `${Math.round(m.totalZonePct)}%`;
-    document.getElementById('metric-total-zone-sub').textContent = `${m.zoneSeconds}s en zona (${m.totalValid}s válidos)`;
+    document.getElementById('metric-total-zone-sub').textContent = `${m.zoneSeconds} seg dentro de tu zona objetivo`;
 
     document.getElementById('metric-deep-zone').textContent = `${Math.round(m.deepZonePct)}%`;
-    document.getElementById('metric-deep-zone-sub').textContent = `${m.deepZoneSeconds}s en zona profunda`;
+    document.getElementById('metric-deep-zone-sub').textContent = `${m.deepZoneSeconds} seg en nivel «Muy bien»`;
 
     document.getElementById('metric-feedback-score').textContent = `${m.feedbackScore} pts`;
-    document.getElementById('metric-feedback-score-sub').textContent = 'Estabilidad sostenida';
+    document.getElementById('metric-feedback-score-sub').textContent = 'Puntos por mantenerte en meta';
 
-    document.getElementById('metric-avg-streaks').textContent = `${m.avgStreak.toFixed(1)} sec`;
-    document.getElementById('metric-avg-streaks-sub').textContent = `${m.streaksCount} rachas continuas`;
+    document.getElementById('metric-avg-streaks').textContent = `${m.avgStreak.toFixed(1)} seg`;
+    document.getElementById('metric-avg-streaks-sub').textContent = `En ${m.streaksCount} entradas a la zona`;
 
-    document.getElementById('metric-max-streaks').textContent = `${m.maxStreak} sec`;
-    document.getElementById('metric-max-streaks-sub').textContent = 'Concentración continua';
+    document.getElementById('metric-max-streaks').textContent = `${m.maxStreak} seg`;
+    document.getElementById('metric-max-streaks-sub').textContent = 'Tiempo continuo sin salir de zona';
 
-    document.getElementById('metric-xp').textContent = `${m.xp}`;
-    document.getElementById('metric-xp-sub').textContent = 'Gamificación';
+    document.getElementById('metric-xp').textContent = `+${m.xp} pts`;
+    document.getElementById('metric-xp-sub').textContent = 'Sumados a tu progreso';
 
-    const trendText = m.slope > 0.0003
-      ? (cfg.role === 'reward' ? '📈 Ascenso (+Potencia)' : '⚠️ Subida (Tensión)')
-      : (m.slope < -0.0003
-          ? (cfg.role === 'inhibit' ? '📉 Inhibición Exitosa' : '📉 Descenso Gradual')
-          : '➡️ Estable');
-    document.getElementById('clinical-trend').textContent = trendText;
+    // Ritmo durante la sesión en lenguaje sencillo
+    const isImproving = (cfg.role === 'reward' && m.slope > 0.0003) || (cfg.role === 'inhibit' && m.slope < -0.0003);
+    const isTiring = (cfg.role === 'reward' && m.slope < -0.0003) || (cfg.role === 'inhibit' && m.slope > 0.0003);
 
-    if (m.bestMin) {
-      document.getElementById('clinical-best-min').textContent = `Min ${m.bestMin.minute} (${m.bestMin.pct}%)`;
+    const trendEl = document.getElementById('clinical-trend');
+    const trendDescEl = document.getElementById('clinical-trend-desc');
+    if (trendEl) {
+      if (isImproving) {
+        trendEl.textContent = '📈 De menos a más';
+        if (trendDescEl) trendDescEl.textContent = 'Terminaste aún mejor que al inicio';
+      } else if (isTiring) {
+        trendEl.textContent = '🌱 Mejor al inicio';
+        if (trendDescEl) trendDescEl.textContent = 'Sentiste algo de cansancio al final';
+      } else {
+        trendEl.textContent = '➡️ Ritmo constante';
+        if (trendDescEl) trendDescEl.textContent = 'Te mantuviste parejo toda la sesión';
+      }
     }
 
-    const denom = m.totalRows || 300;
-    const artPct = ((m.artifacts / denom) * 100).toFixed(1);
-    document.getElementById('clinical-artifacts').textContent = `${m.artifacts}s (${artPct}%)`;
+    if (m.bestMin) {
+      const bestEl = document.getElementById('clinical-best-min');
+      if (bestEl) bestEl.textContent = `Minuto ${m.bestMin.minute} (${m.bestMin.pct}% en zona)`;
+    }
+
+    if (m.worstMin) {
+      const worstEl = document.getElementById('clinical-worst-min');
+      if (worstEl) worstEl.textContent = `Minuto ${m.worstMin.minute} (${m.worstMin.pct}% en zona)`;
+    }
 
     const thresholds = [...new Set(rawData.filter(r => r.band === currentBand && r.threshold !== null && !isNaN(r.threshold)).map(r => r.threshold))];
     if (thresholds.length === 1) {
-      threshValBadge.textContent = `${thresholds[0].toFixed(3)} µV`;
+      threshValBadge.textContent = `${thresholds[0].toFixed(2)} µV`;
     } else if (thresholds.length > 1) {
-      threshValBadge.textContent = `${thresholds[0].toFixed(3)} → ${thresholds[thresholds.length - 1].toFixed(3)} µV`;
+      threshValBadge.textContent = `${thresholds[0].toFixed(2)} → ${thresholds[thresholds.length - 1].toFixed(2)} µV`;
     } else {
       threshValBadge.textContent = '--';
     }
@@ -1532,7 +1472,7 @@
       item.className = 'minute-bar-item';
       item.innerHTML = `
         <div class="minute-bar-track">
-          <div class="minute-bar-fill" style="width: ${m.pct}%"></div>
+          <div class="minute-bar-fill" style="width: ${m.pct}%; background: linear-gradient(90deg, #38BDF8, #FACC15);"></div>
         </div>
         <div class="minute-bar-label">
           <span>Min ${m.minute}</span>
@@ -1543,6 +1483,7 @@
     });
   }
 
+  // GRÁFICA TEMPORAL CONTINUA (Une todos los puntos válidos de principio a fin sin cortes)
   function drawChart(rows, role, metrics, hoverSecond) {
     const w = canvas.clientWidth;
     const h = canvas.clientHeight;
@@ -1584,7 +1525,7 @@
       }
     }
 
-    // 1. Calibración (SOLO si la sesión realmente incluye segundos sin umbral al inicio)
+    // 1. Etapa de calibración inicial (solo si existe en la sesión)
     const calibT = metrics.calibrationSeconds ?? 0;
     if (calibT > 0) {
       const calibX = getX(minT + calibT);
@@ -1599,12 +1540,12 @@
       ctx.stroke();
       ctx.setLineDash([]);
 
-      ctx.fillStyle = 'rgba(148, 163, 184, 0.45)';
+      ctx.fillStyle = 'rgba(148, 163, 184, 0.5)';
       ctx.font = '10px "Plus Jakarta Sans", sans-serif';
-      ctx.fillText(`Calibración (${calibT}s)`, padding.left + 6, padding.top + 14);
+      ctx.fillText(`Preparación inicial (${calibT}s)`, padding.left + 6, padding.top + 14);
     }
 
-    // 2. Umbrales dinámicos escalonados
+    // 2. Líneas de referencia de "Muy bien" y "Bien" con colores del Boceto
     const threshSegments = [];
     let curThresh = null;
     let segStart = minT;
@@ -1632,11 +1573,10 @@
       const deepVal = role === 'reward' ? seg.threshold * DEEP_ZONE_FACTOR : seg.threshold / DEEP_ZONE_FACTOR;
       const yDeep = getY(deepVal);
 
-      // Línea vertical de escalón cuando cambia el umbral en plena sesión
       if (segIdx > 0) {
         const prevSeg = threshSegments[segIdx - 1];
         const prevY = getY(prevSeg.threshold);
-        ctx.strokeStyle = 'rgba(16, 185, 129, 0.45)';
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
         ctx.lineWidth = 1.2;
         ctx.setLineDash([2, 2]);
         ctx.beginPath();
@@ -1645,18 +1585,18 @@
         ctx.stroke();
       }
 
-      // Deep Zone
-      ctx.strokeStyle = 'rgba(99, 102, 241, 0.45)';
-      ctx.lineWidth = 1.2;
+      // Línea de "Muy bien" (Amarillo Sol)
+      ctx.strokeStyle = 'rgba(250, 204, 21, 0.5)';
+      ctx.lineWidth = 1.3;
       ctx.setLineDash([3, 5]);
       ctx.beginPath();
       ctx.moveTo(x1, yDeep);
       ctx.lineTo(x2, yDeep);
       ctx.stroke();
 
-      // Zone
-      ctx.strokeStyle = 'rgba(16, 185, 129, 0.55)';
-      ctx.lineWidth = 1.4;
+      // Línea de "Bien" (Celeste Nube)
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.6)';
+      ctx.lineWidth = 1.5;
       ctx.setLineDash([4, 4]);
       ctx.beginPath();
       ctx.moveTo(x1, yZone);
@@ -1664,62 +1604,22 @@
       ctx.stroke();
 
       if (seg.endT >= maxT - 5) {
-        ctx.fillStyle = 'rgba(129, 140, 248, 0.9)';
-        ctx.font = '10px "Plus Jakarta Sans", sans-serif';
+        ctx.fillStyle = '#FDE047';
+        ctx.font = '600 10px "Plus Jakarta Sans", sans-serif';
         ctx.textAlign = 'right';
-        ctx.fillText('☀️ Deep Zone', w - padding.right - 2, yDeep - 4);
+        ctx.fillText('Muy bien', w - padding.right - 2, yDeep - 4);
 
-        ctx.fillStyle = 'rgba(52, 211, 153, 0.9)';
-        ctx.fillText('☁️ Zone', w - padding.right - 2, yZone - 4);
+        ctx.fillStyle = '#7DD3FC';
+        ctx.fillText('Bien (Meta)', w - padding.right - 2, yZone - 4);
         ctx.textAlign = 'left';
       }
     });
     ctx.setLineDash([]);
 
-    // 3. Artefactos
-    sortedRows.forEach(r => {
-      if (r.valid === 0) {
-        const x = getX(r.t_s);
-        ctx.fillStyle = 'rgba(245, 158, 11, 0.08)';
-        ctx.fillRect(x - 1, padding.top, 2, chartH);
-      }
-    });
-
-    // 4. Cadenas válidas
-    const validChains = [];
-    let currentChain = [];
-
-    sortedRows.forEach(r => {
-      if (r.valid === 1 && r.value !== null) {
-        currentChain.push(r);
-      } else {
-        if (currentChain.length > 0) {
-          validChains.push(currentChain);
-          currentChain = [];
-        }
-      }
-    });
-    if (currentChain.length > 0) {
-      validChains.push(currentChain);
-    }
-
-    // 5. Curva Spline
-    validChains.forEach(chain => {
-      if (chain.length === 1) {
-        // Dibujar punto aislado si solo hay 1 segundo válido entre huecos de ruido
-        const pt = chain[0];
-        const px = getX(pt.t_s);
-        const py = getY(pt.value);
-        const isSucc = evaluateRowSuccess(pt, role);
-        const isDp = evaluateRowDeep(pt, role);
-        ctx.fillStyle = isDp ? '#818CF8' : (isSucc ? '#34D399' : '#94A3B8');
-        ctx.beginPath();
-        ctx.arc(px, py, 2.5, 0, Math.PI * 2);
-        ctx.fill();
-        return;
-      }
-
-      const points = chain.map(r => ({
+    // 3. UNIÓN CONTINUA DE TODOS LOS PUNTOS VÁLIDOS DE LA SESIÓN
+    const validPointsRows = sortedRows.filter(r => r.valid === 1 && r.value !== null && !isNaN(r.value));
+    if (validPointsRows.length >= 2) {
+      const points = validPointsRows.map(r => ({
         x: getX(r.t_s),
         y: getY(r.value),
         t: r.t_s,
@@ -1729,6 +1629,7 @@
         row: r
       }));
 
+      // Relleno suave debajo de toda la curva continua
       const baselineY = shouldInvert ? padding.top : padding.top + chartH;
       ctx.beginPath();
       ctx.moveTo(points[0].x, baselineY);
@@ -1743,34 +1644,28 @@
       ctx.closePath();
 
       const fillGrad = ctx.createLinearGradient(0, padding.top, 0, padding.top + chartH);
-      if (role === 'reward') {
-        fillGrad.addColorStop(0, 'rgba(99, 102, 241, 0.12)');
-        fillGrad.addColorStop(0.4, 'rgba(16, 185, 129, 0.08)');
-        fillGrad.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
-      } else {
-        fillGrad.addColorStop(0, 'rgba(16, 185, 129, 0.12)');
-        fillGrad.addColorStop(0.5, 'rgba(245, 158, 11, 0.06)');
-        fillGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      }
+      fillGrad.addColorStop(0, 'rgba(250, 204, 21, 0.14)');
+      fillGrad.addColorStop(0.45, 'rgba(56, 189, 248, 0.09)');
+      fillGrad.addColorStop(1, 'rgba(56, 189, 248, 0.0)');
       ctx.fillStyle = fillGrad;
       ctx.fill();
 
-      // Trazo coloreado por estado
+      // Trazo continuo coloreado con la paleta del Boceto (Muy bien = Amarillo, Bien = Celeste, Fuera de zona = Gris)
       for (let i = 0; i < points.length - 1; i++) {
         const p0 = points[i];
         const p1 = points[i + 1];
 
-        let strokeColor = '#94A3B8';
+        let strokeColor = '#94A3B8'; // Fuera de zona (Gris)
         if (p0.thresh !== null && !isNaN(p0.thresh)) {
           const isSuccess = evaluateRowSuccess(p0.row, role);
           const isDeep = evaluateRowDeep(p0.row, role);
 
-          if (isDeep) strokeColor = '#818CF8';
-          else if (isSuccess) strokeColor = '#34D399';
+          if (isDeep) strokeColor = '#FACC15';      // Muy bien (Amarillo)
+          else if (isSuccess) strokeColor = '#38BDF8'; // Bien (Celeste)
         }
 
         ctx.strokeStyle = strokeColor;
-        ctx.lineWidth = w < 480 ? 1.8 : 2.4;
+        ctx.lineWidth = w < 480 ? 2.0 : 2.5;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
 
@@ -1780,12 +1675,12 @@
         ctx.bezierCurveTo(midX, p0.y, midX, p1.y, p1.x, p1.y);
         ctx.stroke();
       }
-    });
+    }
 
-    // 6. Cursor Hover / Touch
+    // 4. Cursor Hover / Touch continuo
     if (hoverSecond !== null) {
       const hX = getX(hoverSecond);
-      const hRow = rows.find(r => r.t_s === hoverSecond);
+      const interpRow = getInterpolatedRowAtSecond(sortedRows, hoverSecond);
 
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
       ctx.lineWidth = 1;
@@ -1796,8 +1691,8 @@
       ctx.stroke();
       ctx.setLineDash([]);
 
-      if (hRow && hRow.valid === 1 && hRow.value !== null) {
-        const hY = getY(hRow.value);
+      if (interpRow && interpRow.value !== null) {
+        const hY = getY(interpRow.value);
         ctx.fillStyle = '#FFFFFF';
         ctx.beginPath();
         ctx.arc(hX, hY, 4, 0, Math.PI * 2);
@@ -1810,6 +1705,39 @@
         ctx.stroke();
       }
     }
+  }
+
+  // Obtiene el valor en el segundo buscado o interpola suavemente entre los vecinos válidos más cercanos
+  function getInterpolatedRowAtSecond(sortedRows, targetSecond) {
+    const exact = sortedRows.find(r => r.t_s === targetSecond && r.valid === 1 && r.value !== null);
+    if (exact) return exact;
+
+    const validList = sortedRows.filter(r => r.valid === 1 && r.value !== null);
+    if (!validList.length) return null;
+
+    let prev = null;
+    let next = null;
+    for (let i = 0; i < validList.length; i++) {
+      if (validList[i].t_s <= targetSecond) prev = validList[i];
+      if (validList[i].t_s >= targetSecond && !next) next = validList[i];
+    }
+
+    if (prev && next && prev.t_s !== next.t_s) {
+      const ratio = (targetSecond - prev.t_s) / (next.t_s - prev.t_s);
+      const interpVal = prev.value + ratio * (next.value - prev.value);
+      const thresh = prev.threshold ?? next.threshold;
+      const role = prev.role || 'reward';
+      return {
+        t_s: targetSecond,
+        value: interpVal,
+        threshold: thresh,
+        role,
+        valid: 1,
+        success: thresh !== null ? (role === 'reward' ? (interpVal > thresh ? 1 : 0) : (interpVal < thresh ? 1 : 0)) : null
+      };
+    }
+
+    return prev || next;
   }
 
   function handlePointer(clientX, clientY) {
@@ -1831,41 +1759,35 @@
     const relX = Math.max(0, Math.min(chartW, mouseX - padding.left));
     const targetSecond = Math.round(minT + (relX / chartW) * spanT);
 
-    const row = bandRows.find(r => r.t_s === targetSecond);
+    const sortedRows = [...bandRows].sort((a, b) => a.t_s - b.t_s);
+    const row = getInterpolatedRowAtSecond(sortedRows, targetSecond);
     if (!row) return;
 
     renderCurrentBand(targetSecond);
 
     const mm = Math.floor(targetSecond / 60).toString().padStart(2, '0');
     const ss = (targetSecond % 60).toString().padStart(2, '0');
-    tooltipTime.textContent = `${mm}:${ss} (${targetSecond}s)`;
+    tooltipTime.textContent = `Minuto ${mm}:${ss}`;
 
-    if (row.valid === 0) {
-      tooltipVal.textContent = 'Inválido';
-      tooltipThresh.textContent = row.threshold !== null ? `${row.threshold.toFixed(3)} µV` : '--';
-      tooltipState.textContent = 'Artefacto / Ruido';
-      tooltipState.className = 'tooltip-badge artifact';
+    tooltipVal.textContent = row.value !== null ? `${row.value.toFixed(2)} µV` : '--';
+    tooltipThresh.textContent = row.threshold !== null ? `${row.threshold.toFixed(2)} µV` : 'Preparación';
+
+    if (row.threshold === null || isNaN(row.threshold)) {
+      tooltipState.textContent = 'Preparación inicial';
+      tooltipState.className = 'tooltip-badge neutral';
     } else {
-      tooltipVal.textContent = row.value !== null ? `${row.value.toFixed(3)} µV` : '--';
-      tooltipThresh.textContent = row.threshold !== null ? `${row.threshold.toFixed(3)} µV` : 'En Calibración';
+      const isSuccess = evaluateRowSuccess(row, row.role);
+      const isDeep = evaluateRowDeep(row, row.role);
 
-      if (row.threshold === null || isNaN(row.threshold)) {
-        tooltipState.textContent = 'Calibrando';
-        tooltipState.className = 'tooltip-badge neutral';
+      if (isDeep) {
+        tooltipState.textContent = 'Muy bien';
+        tooltipState.className = 'tooltip-badge deep';
+      } else if (isSuccess) {
+        tooltipState.textContent = 'Bien (En zona)';
+        tooltipState.className = 'tooltip-badge zone';
       } else {
-        const isSuccess = evaluateRowSuccess(row, row.role);
-        const isDeep = evaluateRowDeep(row, row.role);
-
-        if (isDeep) {
-          tooltipState.textContent = '☀️ Deep Zone';
-          tooltipState.className = 'tooltip-badge deep';
-        } else if (isSuccess) {
-          tooltipState.textContent = '☁️ In Zone';
-          tooltipState.className = 'tooltip-badge zone';
-        } else {
-          tooltipState.textContent = '⛈️ Fuera de Zona';
-          tooltipState.className = 'tooltip-badge neutral';
-        }
+        tooltipState.textContent = 'Fuera de zona';
+        tooltipState.className = 'tooltip-badge neutral';
       }
     }
 
@@ -1881,7 +1803,7 @@
 
   function exportSummaryJSON() {
     if (!rawData.length) {
-      alert('Por favor carga un archivo CSV de sesión antes de exportar.');
+      alert('Por favor selecciona una sesión antes de descargar el resumen.');
       return;
     }
 
@@ -1892,10 +1814,10 @@
       global_pie_summary: {
         calc_mode: pieCalcMode,
         scope: pieScope,
-        sun_pct: pieDist.sunPct,
-        cloud_pct: pieDist.cloudPct,
-        storm_pct: pieDist.stormPct,
-        total_focused_pct: pieDist.sunPct + pieDist.cloudPct,
+        muy_bien_pct: pieDist.sunPct,
+        bien_pct: pieDist.cloudPct,
+        fuera_de_zona_pct: pieDist.stormPct,
+        total_zona_objetivo_pct: pieDist.sunPct + pieDist.cloudPct,
         session_score: pieDist.sessionScore
       },
       bands: {}

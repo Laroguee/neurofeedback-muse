@@ -2159,3 +2159,159 @@ body.mode-tablet .draft-center-arena {
 body.mode-mobile .weather-icons-banner {
   grid-template-columns: 1fr !important;
 }
+
+
+/* ==========================================================
+   ESTILOS EXPLICATIVOS PARA EL CLIENTE (OBSERVACIONES SUPERVISORA)
+   ========================================================== */
+.text-sky { color: #38BDF8; }
+.text-yellow { color: #FACC15; }
+
+.chip-dot.sun-dot {
+  background: #FACC15;
+  box-shadow: 0 0 6px #FACC15;
+}
+
+.chip-dot.cloud-dot {
+  background: #38BDF8;
+  box-shadow: 0 0 6px #38BDF8;
+}
+
+.chip-dot.storm-dot {
+  background: #94A3B8;
+}
+
+.draft-center-arena {
+  grid-template-columns: 300px 1fr 290px;
+}
+
+.score-numbers-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.score-scale-tag {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+
+.score-explanation-box {
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.score-exp-item {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.score-exp-item strong {
+  color: #E2E8F0;
+}
+
+.thriving-sub-tag {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #38BDF8;
+  margin-top: -4px;
+}
+
+.thriving-origin-box {
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 12px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.origin-box-title {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #38BDF8;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.origin-box-text {
+  font-size: 0.69rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.origin-tiers-list {
+  list-style: none;
+  padding: 0;
+  margin: 4px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 0.67rem;
+  color: var(--text-dim);
+}
+
+.origin-tiers-list li {
+  padding: 3px 6px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.origin-tiers-list li.active-tier {
+  background: rgba(56, 189, 248, 0.16);
+  color: #F8FAFC;
+  border-left: 3px solid #38BDF8;
+}
+
+/* Tarjetas de Métricas Explicadas */
+.explained-metrics-grid .metric-card {
+  gap: 6px;
+  padding: 12px;
+}
+
+.metric-card-explain {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.metric-card-explain p {
+  font-size: 0.67rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.metric-card-explain strong {
+  color: #CBD5E1;
+}
+
+.metric-card-explain em {
+  font-style: normal;
+  color: #38BDF8;
+  font-weight: 600;
+}
+
+@media (min-width: 1024px) {
+  body.mode-auto .dashboard-body-grid,
+  body.mode-desktop .dashboard-body-grid {
+    grid-template-columns: 1fr 440px;
+  }
+}
+
+body.mode-desktop .dashboard-body-grid {
+  grid-template-columns: 1fr 440px !important;
+}

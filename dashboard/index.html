@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Resumen de Sesión · Neurofeedback Muse 2</title>
-  <meta name="description" content="Dashboard clínico y resumen visual post-sesión de neurofeedback con gráfica de pastel, zonas de entrenamiento, umbrales adaptativos y métricas de rendimiento.">
+  <meta name="description" content="Resumen visual post-sesión de neurofeedback con gráfica de pastel, zonas de entrenamiento explicadas en lenguaje claro y métricas comprensibles para el cliente.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -24,14 +24,14 @@
         <!-- Selector rápido de sesiones pre-cargadas (Nuevos Entrenamientos) -->
         <div class="preset-quick-bar" id="preset-quick-bar" aria-label="Cargar sesiones de ejemplo">
           <span class="preset-bar-label">Sesiones:</span>
-          <button type="button" class="preset-pill-btn" data-preset="005" title="Sesión 005 · Rob-Train (Theta, Low Alpha, High Beta · 343s)">
+          <button type="button" class="preset-pill-btn" data-preset="005" title="Sesión 005 · Rob-Train (3 bandas)">
             #005 Rob-Train (3 bandas)
           </button>
-          <button type="button" class="preset-pill-btn" data-preset="004" title="Sesión 004 · Pruebas (Low Alpha, High Beta · 255s)">
+          <button type="button" class="preset-pill-btn" data-preset="004" title="Sesión 004 · Pruebas (2 bandas)">
             #004 Pruebas (2 bandas)
           </button>
-          <button type="button" class="preset-pill-btn" data-preset="sim-001" title="Sesión Simulada · Foco SMR (300s con calibración)">
-            #Simulada SMR
+          <button type="button" class="preset-pill-btn" data-preset="sim-001" title="Sesión #003 · Foco y Calma">
+            #003 Foco SMR
           </button>
         </div>
 
@@ -65,66 +65,60 @@
           <div class="status-left">
             <span class="session-datetime" id="header-time">Esperando archivo .csv</span>
             <span class="badge waiting-badge" id="header-status-badge"><span class="pulse-dot amber"></span> Esperando datos</span>
-            <span class="badge quality-badge" id="header-quality-badge" style="display:none;"></span>
           </div>
           <div class="status-right">
             <div class="device-tag" id="device-tag-info">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
                 <path d="M12 3C6.5 3 2 6.5 2 12c0 3.58 2.5 6.58 6 7.55v-2.13C5.54 16.5 4 14.48 4 12c0-4.41 3.59-8 8-8s8 3.59 8 8c0 2.48-1.54 4.5-4 5.42v2.13c3.5-.97 6-3.97 6-7.55 0-5.5-4.5-9-10-9z"/>
               </svg>
-              <span id="device-electrodes-text">Muse 2 · 256 Hz · TP9, AF7, AF8, TP10</span>
+              <span id="device-electrodes-text">Diadema Muse 2 · Entrenamiento Cerebral</span>
             </div>
             <label class="btn btn-secondary header-upload-btn" id="header-upload-label" style="display:none;" title="Cargar archivo .csv y/o meta.json">
               <svg viewBox="0 0 20 20" width="14" height="14" fill="currentColor">
                 <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
               </svg>
-              <span>Subir CSV / JSON</span>
+              <span>Subir otra sesión</span>
               <input type="file" id="header-csv-file-input" accept=".csv,.json" multiple style="display:none">
             </label>
-            <button class="info-circle-btn" id="open-info-modal" aria-label="Ayuda del protocolo" title="Información sobre zonas y umbrales">?</button>
+            <button class="info-circle-btn" id="open-info-modal" aria-label="Ayuda sobre tu resumen" title="¿Cómo leer este resumen?">?</button>
           </div>
         </div>
 
         <div class="header-main-title">
           <div class="title-details">
-            <span class="protocol-kicker" id="protocol-badge">Dashboard de Análisis Clínico</span>
+            <span class="protocol-kicker" id="protocol-badge">Resumen de tu Entrenamiento</span>
             <div class="session-title-row">
               <h1 class="session-heading" id="session-id-display">Carga de Sesión</h1>
               <!-- Barra de Progreso de Sesiones estilo Draft (ej. 5 / 20) -->
-              <div class="session-progress-widget" id="session-progress-widget" style="display:none;" title="Progreso del programa de entrenamiento (20 sesiones)">
+              <div class="session-progress-widget" id="session-progress-widget" style="display:none;" title="Avance dentro de tu programa de 20 sesiones">
                 <div class="session-progress-track">
                   <div class="session-progress-fill" id="session-progress-fill" style="width: 25%;"></div>
                 </div>
                 <div class="session-progress-numbers">
-                  <strong id="session-progress-current">5</strong>
-                  <span>20</span>
+                  <span>Sesión <strong id="session-progress-current">5</strong> de <strong>20</strong></span>
                 </div>
               </div>
             </div>
           </div>
 
           <div class="header-right-controls">
-            <!-- Conmutador de Vista: Resumen Pastel (Draft) vs Detalle Ondas (Actual) vs Ambas -->
+            <!-- Conmutador de Vista: Resumen Pastel vs Detalle de Curvas vs Ambas -->
             <div class="dashboard-section-switcher" id="dashboard-section-switcher" style="display:none;" role="tablist" aria-label="Modo de resumen">
               <button type="button" class="section-switch-btn active" data-section="both" id="tab-view-both">
                 <span>🌤️ + 📈</span> Vista Completa
               </button>
               <button type="button" class="section-switch-btn" data-section="draft" id="tab-view-draft">
-                <span>☀️</span> Resumen Pastel
+                <span>☀️</span> Resumen General
               </button>
               <button type="button" class="section-switch-btn" data-section="clinical" id="tab-view-clinical">
-                <span>📈</span> Ondas por Banda
+                <span>📈</span> Detalle por Área
               </button>
             </div>
 
             <div class="session-quick-stats">
               <div class="quick-stat">
-                <span class="stat-label">Duración Activa</span>
+                <span class="stat-label">Duración de la Sesión</span>
                 <span class="stat-value" id="quick-duration">--</span>
-              </div>
-              <div class="quick-stat">
-                <span class="stat-label">Señal Válida</span>
-                <span class="stat-value" id="quick-sampling">1 Hz por banda</span>
               </div>
             </div>
           </div>
@@ -147,7 +141,7 @@
 
           <h2 class="empty-title">Cargar Sesión de Neurofeedback</h2>
           <p class="empty-description">
-            Arrastra y suelta tu archivo <code>serie_por_segundo.csv</code> (y opcionalmente su <code>meta.json</code>) para visualizar el nuevo <strong>Resumen de Pastel Climático</strong> y las curvas clínicas por banda.
+            Arrastra y suelta tu archivo <code>.csv</code> (y opcionalmente su <code>meta.json</code>) para visualizar tu resumen de rendimiento explicado de forma sencilla y clara.
           </p>
 
           <!-- Dropzone Box -->
@@ -164,22 +158,22 @@
 
           <!-- Botones de Casos Reales (Nuevos Entrenamientos) -->
           <div class="demo-trigger-box">
-            <span class="demo-box-kicker">🧪 Casos listos para explorar (Carpeta <code>nuevos_entrenamientos</code>):</span>
+            <span class="demo-box-kicker">🧪 Sesiones disponibles para visualizar:</span>
             <div class="demo-buttons-row">
               <button type="button" class="btn-demo-card primary-demo" data-preset="005">
-                <span class="demo-card-badge">Nuevo · 3 Bandas</span>
-                <strong>Sesión #005 · Rob-Train</strong>
-                <span class="demo-card-sub">Theta (Reward) · Low Alpha · High Beta · 343s</span>
+                <span class="demo-card-badge">Sesión #005 · 3 Áreas</span>
+                <strong>Entrenamiento Rob-Train</strong>
+                <span class="demo-card-sub">Relajación profunda, Calma mental y Control de estrés</span>
               </button>
               <button type="button" class="btn-demo-card" data-preset="004">
-                <span class="demo-card-badge">Nuevo · 2 Bandas</span>
-                <strong>Sesión #004 · Pruebas</strong>
-                <span class="demo-card-sub">Low Alpha (Reward) · High Beta (Inhibit) · 255s</span>
+                <span class="demo-card-badge">Sesión #004 · 2 Áreas</span>
+                <strong>Entrenamiento Pruebas</strong>
+                <span class="demo-card-sub">Calma mental y Control de estrés</span>
               </button>
               <button type="button" class="btn-demo-card" data-preset="sim-001" id="btn-load-demo">
-                <span class="demo-card-badge">Simulación · 3 Bandas</span>
-                <strong>Sesión #003 · Foco SMR</strong>
-                <span class="demo-card-sub">Low Beta · Theta · High Beta · 300s (c/ Calibración)</span>
+                <span class="demo-card-badge">Sesión #003 · 3 Áreas</span>
+                <strong>Entrenamiento de Concentración</strong>
+                <span class="demo-card-sub">Atención sostenida, Mente despierta y Calma</span>
               </button>
             </div>
           </div>
@@ -188,7 +182,7 @@
       </section>
 
       <!-- ====================================================================
-           NUEVA SECCIÓN: VISTA RESUMEN DE PASTEL ("DRAFT" DEL BOCETO)
+           SECCIÓN 1: VISTA RESUMEN DE PASTEL (BOCETO)
            ==================================================================== -->
       <section class="draft-summary-section" id="draft-summary-section" style="display:none;" aria-label="Resumen visual de rendimiento de la sesión">
         <div class="draft-summary-card">
@@ -196,40 +190,27 @@
           <!-- Barra de herramientas superior de la tarjeta Pastel -->
           <div class="draft-card-toolbar">
             <div class="draft-toolbar-left">
-              <span class="draft-section-kicker">Resumen Global de Rendimiento</span>
-              <div class="pie-scope-pills" id="pie-scope-pills" role="group" aria-label="Filtrar pastel por banda o promedio">
-                <!-- Generado dinámicamente: "Promedio (3 bandas)" + cada banda -->
+              <span class="draft-section-kicker">¿Cómo estuvo tu entrenamiento hoy?</span>
+              <div class="pie-scope-pills" id="pie-scope-pills" role="group" aria-label="Filtrar pastel por área o promedio general">
+                <!-- Generado dinámicamente: "Resumen General" + cada área -->
               </div>
             </div>
 
             <div class="draft-toolbar-right">
-              <!-- Selector de modo de cálculo -->
-              <div class="draft-control-group" title="Elige cómo agrupar las 3 zonas del pastel">
-                <label class="draft-control-label" for="pie-calc-mode">Criterio:</label>
+              <div class="draft-control-group" title="Elige cómo resumir tu tiempo en la gráfica circular">
+                <label class="draft-control-label" for="pie-calc-mode">Modo de vista:</label>
                 <select id="pie-calc-mode" class="draft-select">
-                  <option value="zones">Zonas Promedio (Sol = Deep · Nube = Zona · Tormenta = Fuera)</option>
-                  <option value="synergy">Sinergia Bandas (Sol = Todas bien · Nube = Parcial · Tormenta = 0)</option>
+                  <option value="zones">Promedio por nivel (Muy bien · Bien · Fuera de zona)</option>
+                  <option value="synergy">Equilibrio simultáneo (Todas en meta · Parcial · Fuera de zona)</option>
                 </select>
-              </div>
-
-              <!-- Selector de paleta de color: Semáforo (Audio) vs Clima (Boceto) -->
-              <div class="palette-toggle-group" role="group" aria-label="Paleta de colores del pastel">
-                <button type="button" class="palette-btn active" data-palette="traffic" id="btn-palette-traffic" title="Verde (Sol) / Amarillo (Nube) / Rojo (Tormenta)">
-                  <span class="palette-dots"><i class="dot-g"></i><i class="dot-y"></i><i class="dot-r"></i></span>
-                  Semáforo
-                </button>
-                <button type="button" class="palette-btn" data-palette="weather" id="btn-palette-weather" title="Amarillo (Sol) / Celeste (Nube) / Gris (Tormenta) como el boceto">
-                  <span class="palette-dots"><i class="dot-sun"></i><i class="dot-cloud"></i><i class="dot-storm"></i></span>
-                  Boceto
-                </button>
               </div>
             </div>
           </div>
 
-          <!-- Fila Superior: Los 3 Íconos Climáticos del Boceto (Sol, Nube, Tormenta) -->
+          <!-- Fila Superior: Los 3 Niveles con la Paleta del Boceto (Muy bien, Bien, Fuera de zona) -->
           <div class="weather-icons-banner" id="weather-icons-banner">
             
-            <!-- 1. SOL (Excelente / Deep Zone) -->
+            <!-- 1. MUY BIEN (Amarillo Sol) -->
             <div class="weather-hero-item sun-item" id="weather-card-sun">
               <div class="weather-svg-wrap">
                 <svg class="weather-icon-svg sun-svg" viewBox="0 0 96 96" fill="none" aria-hidden="true">
@@ -246,12 +227,12 @@
               </div>
               <div class="weather-hero-info">
                 <span class="weather-hero-pct" id="weather-sun-pct">--%</span>
-                <span class="weather-hero-title" id="weather-sun-title">Solecito · Muy Bien</span>
-                <span class="weather-hero-sub" id="weather-sun-sub">Zona profunda / Óptimo</span>
+                <span class="weather-hero-title" id="weather-sun-title">Muy bien</span>
+                <span class="weather-hero-sub" id="weather-sun-sub">Superaste tu zona objetivo con holgura</span>
               </div>
             </div>
 
-            <!-- 2. NUBE (Bien / En Zona) -->
+            <!-- 2. BIEN (Celeste Nube) -->
             <div class="weather-hero-item cloud-item" id="weather-card-cloud">
               <div class="weather-svg-wrap">
                 <svg class="weather-icon-svg cloud-svg" viewBox="0 0 110 86" fill="none" aria-hidden="true">
@@ -260,12 +241,12 @@
               </div>
               <div class="weather-hero-info">
                 <span class="weather-hero-pct" id="weather-cloud-pct">--%</span>
-                <span class="weather-hero-title" id="weather-cloud-title">Nubecita · Bien</span>
-                <span class="weather-hero-sub" id="weather-cloud-sub">En Zona de entrenamiento</span>
+                <span class="weather-hero-title" id="weather-cloud-title">Bien</span>
+                <span class="weather-hero-sub" id="weather-cloud-sub">Te mantuviste dentro de tu zona objetivo</span>
               </div>
             </div>
 
-            <!-- 3. TORMENTA (Por mejorar / Fuera de Zona) -->
+            <!-- 3. FUERA DE ZONA (Gris Tormenta) -->
             <div class="weather-hero-item storm-item" id="weather-card-storm">
               <div class="weather-svg-wrap">
                 <svg class="weather-icon-svg storm-svg" viewBox="0 0 110 96" fill="none" aria-hidden="true">
@@ -276,39 +257,49 @@
               </div>
               <div class="weather-hero-info">
                 <span class="weather-hero-pct" id="weather-storm-pct">--%</span>
-                <span class="weather-hero-title" id="weather-storm-title">Tormenta · Fuera de Zona</span>
-                <span class="weather-hero-sub" id="weather-storm-sub">Sobre-activación o distracción</span>
+                <span class="weather-hero-title" id="weather-storm-title">Fuera de zona</span>
+                <span class="weather-hero-sub" id="weather-storm-sub">Momentos de distracción o tensión</span>
               </div>
             </div>
 
           </div>
 
-          <!-- Cuerpo Central de 3 Columnas: [Score Sesión / Pasada] + [Gráfica de Pastel] + [Badge Thriving] -->
+          <!-- Cuerpo Central de 3 Columnas: [Score Sesión / Pasada + Explicación] + [Gráfica de Pastel] + [Insignia Explicada] -->
           <div class="draft-center-arena">
             
-            <!-- Columna Izquierda: Score sesión y Sesión pasada (igual al boceto) -->
+            <!-- Columna Izquierda: Score sesión, Sesión pasada y Explicación clara -->
             <div class="draft-score-column">
               <div class="score-comparison-card">
-                <div class="score-block current-score-block">
-                  <span class="score-block-label">Score sesión</span>
-                  <div class="score-block-val-row">
-                    <span class="score-big-number" id="draft-score-current">81</span>
-                    <span class="score-delta-pill positive" id="draft-score-delta">+9 pts</span>
+                <div class="score-numbers-grid">
+                  <div class="score-block current-score-block">
+                    <span class="score-block-label">Score sesión</span>
+                    <div class="score-block-val-row">
+                      <span class="score-big-number" id="draft-score-current">81</span>
+                      <span class="score-scale-tag">/ 100</span>
+                    </div>
+                    <span class="score-delta-pill positive" id="draft-score-delta">+9 pts vs anterior</span>
+                  </div>
+
+                  <div class="score-block past-score-block">
+                    <span class="score-block-label">Sesión pasada</span>
+                    <span class="score-past-number" id="draft-score-past">72</span>
+                    <span class="score-past-caption" id="draft-score-past-label">Sesión previa</span>
                   </div>
                 </div>
-                
-                <div class="score-divider"></div>
 
-                <div class="score-block past-score-block">
-                  <span class="score-block-label">Sesión pasada</span>
-                  <span class="score-past-number" id="draft-score-past">72</span>
-                  <span class="score-past-caption" id="draft-score-past-label">Referencia previa</span>
+                <div class="score-explanation-box" id="score-explanation-box">
+                  <p class="score-exp-item">
+                    <strong>¿Qué significa?</strong> Es tu calificación de hoy (de 0 a 100). Entre más alto, mejor lograste mantener tu mente en calma y enfocada.
+                  </p>
+                  <p class="score-exp-item" id="score-formula-text">
+                    <strong>¿De dónde sale?</strong> Se calcula a partir del tiempo que estuviste en tu zona objetivo (<strong>Muy bien + Bien</strong>) más un bono por constancia.
+                  </p>
                 </div>
               </div>
 
-              <!-- Desglose rápido del aporte de cada banda entrenada -->
+              <!-- Desglose rápido del aporte de cada área entrenada -->
               <div class="band-contribution-box">
-                <span class="contrib-box-title">Aporte por Banda Entrenada</span>
+                <span class="contrib-box-title">Tiempo en zona por habilidad entrenada</span>
                 <div class="band-contrib-list" id="band-contrib-list">
                   <!-- Generado dinámicamente por cada banda del CSV -->
                 </div>
@@ -323,57 +314,60 @@
                 <div class="pie-tooltip" id="pie-tooltip" style="display:none;"></div>
               </div>
               <div class="pie-total-focus-pill" id="pie-total-focus-pill">
-                ☀️ + ☁️ Tiempo total enfocado: <strong id="pie-total-focus-val">--%</strong>
+                Tiempo total en tu Zona Objetivo (<strong>Muy bien + Bien</strong>): <strong id="pie-total-focus-val">--%</strong>
               </div>
             </div>
 
-            <!-- Columna Derecha: Insignia Ilustrada estilo "Thriving" del boceto -->
+            <!-- Columna Derecha: Insignia Ilustrada con Explicación de su conexión con la Zona Objetivo -->
             <div class="draft-thriving-column">
               <div class="thriving-cloud-badge" id="thriving-badge-card">
-                <div class="thriving-header-tag" id="thriving-status-title">Thriving!</div>
+                <div class="thriving-header-tag" id="thriving-status-title">Focused!</div>
+                <div class="thriving-sub-tag" id="thriving-status-subtitle">¡Mente Enfocada!</div>
                 <div class="thriving-illustration" id="thriving-illustration">
-                  <!-- Ilustración SVG inspirada en el superhéroe con capa del boceto -->
-                  <svg viewBox="0 0 140 130" width="125" height="115" fill="none" aria-hidden="true">
-                    <!-- Nube de fondo estilo boceto -->
+                  <!-- Ilustración SVG inspirada en el personaje con capa del boceto -->
+                  <svg viewBox="0 0 140 130" width="115" height="105" fill="none" aria-hidden="true">
                     <path d="M22 105C12 102 8 90 14 80C8 68 14 52 26 48C30 32 48 24 64 30C78 20 98 25 106 39C120 42 128 56 122 70C130 82 124 98 110 103C100 112 82 112 70 108C54 114 34 112 22 105Z" stroke="rgba(255,255,255,0.22)" stroke-width="2.5" fill="rgba(255,255,255,0.03)"/>
-                    <!-- Capa roja ondeando -->
                     <path d="M66 56C52 60 36 72 28 90C40 88 50 93 62 88L66 56Z" fill="#EF4444" fill-opacity="0.85" stroke="#F87171" stroke-width="2" stroke-linejoin="round"/>
-                    <!-- Cuerpo del personaje -->
                     <circle cx="74" cy="40" r="10" stroke="#F8FAFC" stroke-width="3" fill="#0F172A"/>
-                    <!-- Sonrisa -->
                     <path d="M70 41C72 44 76 44 78 41" stroke="#38BDF8" stroke-width="2" stroke-linecap="round"/>
-                    <!-- Torso -->
                     <path d="M66 53L82 53L79 82L67 82L66 53Z" stroke="#F8FAFC" stroke-width="3" stroke-linejoin="round" fill="#1E293B"/>
-                    <!-- Brazo izquierdo en la cintura -->
                     <path d="M66 55L55 66L66 73" stroke="#F8FAFC" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-                    <!-- Brazo derecho levantado en señal de victoria (como el boceto) -->
                     <path d="M82 55L98 35L103 39" stroke="#F8FAFC" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
-                    <!-- Estrella / destello en la mano -->
                     <circle cx="101" cy="33" r="4" fill="#FACC15"/>
-                    <!-- Piernas -->
                     <path d="M69 82L63 106" stroke="#F8FAFC" stroke-width="3" stroke-linecap="round"/>
                     <path d="M77 82L84 106" stroke="#F8FAFC" stroke-width="3" stroke-linecap="round"/>
                   </svg>
                 </div>
                 <p class="thriving-status-desc" id="thriving-status-desc">
-                  Excelente autorregulación en las bandas entrenadas
+                  Lograste sostener tu mente dentro de la zona objetivo de forma constante.
                 </p>
+                <div class="thriving-origin-box" id="thriving-origin-box">
+                  <span class="origin-box-title">¿De dónde sale este nivel?</span>
+                  <p class="origin-box-text" id="thriving-origin-text">
+                    Depende de cuánto tiempo estuviste en tu <strong>Zona Objetivo (Muy bien + Bien)</strong>:
+                  </p>
+                  <ul class="origin-tiers-list">
+                    <li id="tier-thriving"><strong>Thriving (Dominio):</strong> 60% o más en zona</li>
+                    <li id="tier-focused"><strong>Focused (Enfocado):</strong> 35% a 59% en zona</li>
+                    <li id="tier-building"><strong>En práctica:</strong> menos de 35% en zona</li>
+                  </ul>
+                </div>
               </div>
             </div>
 
           </div>
 
-          <!-- Banner Narrativo Inferior + Botón Check Verde [✓] (Idéntico al boceto) -->
+          <!-- Banner Narrativo Inferior en Lenguaje Común + Botón Check Verde [✓] -->
           <div class="draft-narrative-row">
             <div class="narrative-quote-box">
               <span class="quote-mark">“</span>
               <p class="narrative-text" id="draft-narrative-text">
-                Hoy tu cerebro se mantuvo enfocado el 68% y solo se sobre-activó 4 veces...
+                Hoy lograste mantener tu mente en calma y enfocada durante buena parte del entrenamiento...
               </p>
               <span class="quote-mark closing">”</span>
             </div>
 
-            <button type="button" class="draft-check-btn" id="btn-draft-check" title="Confirmar resumen de sesión">
+            <button type="button" class="draft-check-btn" id="btn-draft-check" title="Confirmar lectura del resumen">
               <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="3">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
               </svg>
@@ -384,67 +378,66 @@
       </section>
 
       <!-- ====================================================================
-           SECCIÓN CLÍNICA POR BANDAS ("ACTUAL" EN EL BOCETO)
+           SECCIÓN 2: DETALLE DE EVOLUCIÓN Y MÉTRICAS EXPLICADAS AL CLIENTE
            ==================================================================== -->
       <div class="clinical-section-wrapper" id="clinical-section-wrapper" style="display:none;">
         
-        <!-- Selector de Bandas con Pills interactivas -->
-        <nav class="band-navigation" aria-label="Selección de banda cerebral" id="band-nav">
+        <!-- Selector de Áreas / Bandas con nombres amigables -->
+        <nav class="band-navigation" aria-label="Selección de habilidad entrenada" id="band-nav">
           <!-- Generado dinámicamente al cargar CSV -->
         </nav>
 
         <!-- Layout de 2 Columnas en Desktop / Flujo Vertical en Móvil -->
         <div class="dashboard-body-grid" id="dashboard-body-grid">
           
-          <!-- Columna Izquierda / Principal: Gráfico y Curva Temporal -->
-          <section class="main-chart-column" aria-label="Visualización de zonas cerebrales">
+          <!-- Columna Izquierda / Principal: Gráfico Continuo y Progreso Minuto a Minuto -->
+          <section class="main-chart-column" aria-label="Evolución durante la sesión">
             
             <div class="chart-card">
               <!-- Barra de controles sobre la gráfica -->
               <div class="chart-toolbar">
                 <div class="band-meta-info">
-                  <span class="role-pill" id="band-role-indicator">Reward</span>
-                  <span class="band-description-text" id="band-description-text">Beta Baja (12-15 Hz) · Aumentar concentración</span>
+                  <span class="role-pill" id="band-role-indicator">Meta: Aumentar</span>
+                  <span class="band-description-text" id="band-description-text">Atención sostenida y tranquilidad</span>
                 </div>
                 
                 <div class="chart-action-toggles">
                   <div class="toggle-container" id="inhibit-flip-control">
-                    <label class="switch" title="Invertir el eje para que arriba siempre signifique éxito">
+                    <label class="switch" title="Hacer que hacia arriba siempre signifique estar más cerca de tu meta">
                       <input type="checkbox" id="invert-axis-toggle" checked>
                       <span class="slider round"></span>
                     </label>
-                    <span class="toggle-text" id="invert-axis-label">Arriba = Meta</span>
+                    <span class="toggle-text" id="invert-axis-label">Arriba = En Meta</span>
                   </div>
-                  <div class="current-threshold-indicator">
-                    Umbral: <strong id="thresh-val">0.948 → 1.020 µV</strong>
+                  <div class="current-threshold-indicator" title="Nivel de referencia para entrar en tu zona objetivo">
+                    Meta: <strong id="thresh-val">0.948 µV</strong>
                   </div>
                 </div>
               </div>
 
-              <!-- Leyenda de colores de zona -->
+              <!-- Leyenda de colores de zona con la Paleta del Boceto y sin Artefactos -->
               <div class="chart-legend-row">
-                <span class="legend-chip deep"><span class="chip-dot deep"></span> ☀️ Deep Zone (&gt;1.25×)</span>
-                <span class="legend-chip zone"><span class="chip-dot zone"></span> ☁️ Zone (En umbral)</span>
-                <span class="legend-chip neutral"><span class="chip-dot neutral"></span> ⛈️ Fuera de Zona</span>
-                <span class="legend-chip artifact"><span class="chip-dot artifact"></span> Artefacto / Ruido</span>
+                <span class="legend-chip deep"><span class="chip-dot sun-dot"></span> Muy bien (Superaste la meta con holgura)</span>
+                <span class="legend-chip zone"><span class="chip-dot cloud-dot"></span> Bien (Dentro de tu zona objetivo)</span>
+                <span class="legend-chip neutral"><span class="chip-dot storm-dot"></span> Fuera de zona</span>
               </div>
 
-              <!-- Contenedor del Canvas Interactivo con Soporte DPI y Touch -->
+              <!-- Contenedor del Canvas Interactivo con Curva Continua -->
               <div class="canvas-responsive-container" id="canvas-container">
                 <canvas id="neuro-canvas"></canvas>
                 
-                <!-- Tooltip Flotante de Alta Precisión -->
+                <!-- Tooltip Flotante en Lenguaje Sencillo -->
                 <div class="canvas-tooltip" id="canvas-tooltip" role="tooltip">
                   <div class="tooltip-time" id="tooltip-time">02:15</div>
                   <div class="tooltip-data-row">
-                    <span class="tooltip-label">Amplitud:</span>
-                    <span class="tooltip-val" id="tooltip-val">1.082 µV</span>
+                    <span class="tooltip-label">Tu nivel:</span>
+                    <span class="tooltip-val" id="tooltip-val">1.08 µV</span>
                   </div>
                   <div class="tooltip-data-row">
-                    <span class="tooltip-label">Umbral:</span>
-                    <span class="tooltip-val" id="tooltip-thresh">0.948 µV</span>
+                    <span class="tooltip-label">Meta:</span>
+                    <span class="tooltip-val" id="tooltip-thresh">0.95 µV</span>
                   </div>
-                  <div class="tooltip-badge" id="tooltip-state">Deep Zone</div>
+                  <div class="tooltip-badge" id="tooltip-state">Muy bien</div>
                 </div>
               </div>
 
@@ -459,11 +452,11 @@
               </div>
             </div>
 
-            <!-- Desglose Minuto a Minuto (Nivel Clínico) -->
+            <!-- Desglose Minuto a Minuto -->
             <div class="minutes-breakdown-card">
               <div class="card-mini-header">
-                <h3>Rendimiento Minuto a Minuto</h3>
-                <span class="card-hint">Porcentaje de tiempo en zona por bloque de 60s</span>
+                <h3>Tu Evolución Minuto a Minuto</h3>
+                <span class="card-hint">Porcentaje de cada minuto que lograste estar en tu zona objetivo (Bien + Muy bien)</span>
               </div>
               <div class="minutes-bar-grid" id="minutes-progress-grid">
                 <!-- Generado dinámicamente según la duración real de la sesión -->
@@ -472,101 +465,119 @@
 
           </section>
 
-          <!-- Columna Derecha / Lateral: 6 Tarjetas de Métricas de Muse + Diagnóstico + Acciones -->
-          <aside class="sidebar-metrics-column" aria-label="Resumen de métricas y diagnóstico">
+          <!-- Columna Derecha / Lateral: 6 Tarjetas Explicativas en Español + Resumen Sencillo -->
+          <aside class="sidebar-metrics-column" aria-label="Explicación de tus resultados">
             
-            <!-- Grid 3x2 de Métricas (Idéntico a la App de Muse) -->
-            <div class="metrics-grid">
+            <!-- Grid de Métricas Traducidas y Explicadas al Cliente -->
+            <div class="metrics-grid explained-metrics-grid">
               
-              <!-- Tarjeta 1: Total zone -->
+              <!-- Tarjeta 1: Tiempo en Zona Objetivo (antes Total zone) -->
               <div class="metric-card zone-card" id="card-total-zone">
                 <div class="metric-card-top">
-                  <span class="metric-card-title">Total zone (☀️+☁️)</span>
-                  <span class="metric-tag">Meta: &gt;50%</span>
+                  <span class="metric-card-title">Tiempo en Zona Objetivo</span>
+                  <span class="metric-tag">Meta recomendada: &gt;50%</span>
                 </div>
-                <div class="metric-card-value text-green" id="metric-total-zone">--%</div>
-                <div class="metric-card-footer" id="metric-total-zone-sub">0s en zona</div>
+                <div class="metric-card-value text-sky" id="metric-total-zone">--%</div>
+                <div class="metric-card-footer" id="metric-total-zone-sub">0s dentro de la meta</div>
+                <div class="metric-card-explain">
+                  <p><strong>¿Qué es?</strong> Qué parte de la sesión lograste mantener tu mente en el estado deseado.</p>
+                  <p><strong>¿Cómo se calcula?</strong> Suma del tiempo en <em>Bien + Muy bien</em> dividido entre el tiempo de tu sesión.</p>
+                </div>
               </div>
 
-              <!-- Tarjeta 2: Deep zone -->
+              <!-- Tarjeta 2: Tiempo en Nivel Muy Bien (antes Deep zone) -->
               <div class="metric-card deep-card" id="card-deep-zone">
                 <div class="metric-card-top">
-                  <span class="metric-card-title">Deep zone (☀️)</span>
-                  <span class="metric-tag">Factor 1.25×</span>
+                  <span class="metric-card-title">Tiempo en Nivel «Muy bien»</span>
+                  <span class="metric-tag">Calma o enfoque profundo</span>
                 </div>
-                <div class="metric-card-value text-cyan" id="metric-deep-zone">--%</div>
-                <div class="metric-card-footer" id="metric-deep-zone-sub">0s en zona profunda</div>
+                <div class="metric-card-value text-yellow" id="metric-deep-zone">--%</div>
+                <div class="metric-card-footer" id="metric-deep-zone-sub">0s en nivel óptimo</div>
+                <div class="metric-card-explain">
+                  <p><strong>¿Qué es?</strong> Momentos en que no solo cumpliste la meta, sino que la superaste con holgura.</p>
+                  <p><strong>¿Cómo se calcula?</strong> Porcentaje de tiempo en que superaste tu meta por más de un 25%.</p>
+                </div>
               </div>
 
-              <!-- Tarjeta 3: Feedback score -->
-              <div class="metric-card score-card" id="card-feedback-score">
-                <div class="metric-card-top">
-                  <span class="metric-card-title">Feedback score</span>
-                  <span class="metric-tag">Puntos</span>
-                </div>
-                <div class="metric-card-value text-white" id="metric-feedback-score">-- pts</div>
-                <div class="metric-card-footer" id="metric-feedback-score-sub">Estabilidad sostenida</div>
-              </div>
-
-              <!-- Tarjeta 4: Avg streaks -->
-              <div class="metric-card streak-card" id="card-avg-streaks">
-                <div class="metric-card-top">
-                  <span class="metric-card-title">Avg streaks</span>
-                  <span class="metric-tag">Promedio</span>
-                </div>
-                <div class="metric-card-value text-pink" id="metric-avg-streaks">-- sec</div>
-                <div class="metric-card-footer" id="metric-avg-streaks-sub">-- rachas continuas</div>
-              </div>
-
-              <!-- Tarjeta 5: Max streaks -->
+              <!-- Tarjeta 3: Mejor Racha Continua (antes Max streaks) -->
               <div class="metric-card max-streak-card" id="card-max-streaks">
                 <div class="metric-card-top">
-                  <span class="metric-card-title">Max streaks</span>
-                  <span class="metric-tag">Récord</span>
+                  <span class="metric-card-title">Mejor Racha Continua</span>
+                  <span class="metric-tag">Tu récord de hoy</span>
                 </div>
-                <div class="metric-card-value text-purple" id="metric-max-streaks">-- sec</div>
-                <div class="metric-card-footer" id="metric-max-streaks-sub">Concentración continua</div>
+                <div class="metric-card-value text-purple" id="metric-max-streaks">-- seg</div>
+                <div class="metric-card-footer" id="metric-max-streaks-sub">Tiempo seguido sin distraerte</div>
+                <div class="metric-card-explain">
+                  <p><strong>¿Qué es?</strong> El mayor tiempo seguido que sostuviste el estado ideal sin salirte de la zona.</p>
+                  <p><strong>¿Cómo se calcula?</strong> El bloque más largo de segundos consecutivos en <em>Bien</em> o <em>Muy bien</em>.</p>
+                </div>
               </div>
 
-              <!-- Tarjeta 6: XP -->
+              <!-- Tarjeta 4: Duración Media de Enfoque (antes Avg streaks) -->
+              <div class="metric-card streak-card" id="card-avg-streaks">
+                <div class="metric-card-top">
+                  <span class="metric-card-title">Duración Media en Zona</span>
+                  <span class="metric-tag">Estabilidad por intento</span>
+                </div>
+                <div class="metric-card-value text-pink" id="metric-avg-streaks">-- seg</div>
+                <div class="metric-card-footer" id="metric-avg-streaks-sub">-- entradas en zona</div>
+                <div class="metric-card-explain">
+                  <p><strong>¿Qué es?</strong> Cuántos segundos seguidos sueles mantenerte enfocado cada vez que entras en zona.</p>
+                  <p><strong>¿Cómo se calcula?</strong> Promedio de duración de todas las veces que entraste en tu zona objetivo.</p>
+                </div>
+              </div>
+
+              <!-- Tarjeta 5: Puntos de Constancia (antes Feedback score) -->
+              <div class="metric-card score-card" id="card-feedback-score">
+                <div class="metric-card-top">
+                  <span class="metric-card-title">Puntos de Constancia</span>
+                  <span class="metric-tag">Recompensa del ejercicio</span>
+                </div>
+                <div class="metric-card-value text-white" id="metric-feedback-score">-- pts</div>
+                <div class="metric-card-footer" id="metric-feedback-score-sub">Puntaje acumulado</div>
+                <div class="metric-card-explain">
+                  <p><strong>¿Qué es?</strong> Puntos que ganas por cada segundo que mantienes tu mente dentro de la meta.</p>
+                  <p><strong>¿Cómo se calcula?</strong> 1 pto por segundo en <em>Bien</em>, 3 ptos en <em>Muy bien</em> y bono extra por rachas largas.</p>
+                </div>
+              </div>
+
+              <!-- Tarjeta 6: Avance del Programa (antes XP Ganado) -->
               <div class="metric-card xp-card" id="card-xp">
                 <div class="metric-card-top">
-                  <span class="metric-card-title">XP Ganado</span>
-                  <span class="metric-tag">+Progreso</span>
+                  <span class="metric-card-title">Avance de Entrenamiento</span>
+                  <span class="metric-tag">Experiencia acumulada</span>
                 </div>
-                <div class="metric-card-value text-white" id="metric-xp">--</div>
-                <div class="metric-card-footer" id="metric-xp-sub">Gamificación</div>
+                <div class="metric-card-value text-green" id="metric-xp">-- pts</div>
+                <div class="metric-card-footer" id="metric-xp-sub">Aporte a tu meta general</div>
+                <div class="metric-card-explain">
+                  <p><strong>¿Qué es?</strong> El progreso que aporta este ejercicio a tu evolución a lo largo de las sesiones.</p>
+                  <p><strong>¿Cómo se calcula?</strong> Equivale al 45% de tus Puntos de Constancia convertidos en experiencia.</p>
+                </div>
               </div>
             </div>
 
-            <!-- Diagnóstico Clínico Sintetizado + Motivos de Artefactos de meta.json -->
+            <!-- Resumen Sencillo de la Habilidad (Sin Calidad/Artefactos) -->
             <div class="clinical-summary-box">
               <div class="clinical-box-header">
-                <h3>Diagnóstico Clínico</h3>
-                <span class="clinical-badge" id="clinical-eval-badge">Evaluación</span>
+                <h3>Resumen de esta Habilidad</h3>
+                <span class="clinical-badge" id="clinical-eval-badge">Interpretación</span>
               </div>
               <div class="clinical-items-grid">
                 <div class="clinical-item">
-                  <span class="item-label">Tendencia de la Banda</span>
+                  <span class="item-label">Ritmo durante la Sesión</span>
                   <span class="item-value" id="clinical-trend">--</span>
-                  <span class="item-desc">Regresión lineal de sesión</span>
+                  <span class="item-desc" id="clinical-trend-desc">Evolución de principio a fin</span>
                 </div>
                 <div class="clinical-item">
-                  <span class="item-label">Mejor Minuto</span>
+                  <span class="item-label">Tu Mejor Momento</span>
                   <span class="item-value text-green" id="clinical-best-min">--</span>
-                  <span class="item-desc">Mayor estabilidad</span>
+                  <span class="item-desc">Minuto con mayor tiempo en zona</span>
                 </div>
                 <div class="clinical-item">
-                  <span class="item-label">Calidad / Artefactos</span>
-                  <span class="item-value text-amber" id="clinical-artifacts">--</span>
-                  <span class="item-desc" id="clinical-artifacts-desc">Movimiento / Parpadeos</span>
+                  <span class="item-label">Etapa de Adaptación</span>
+                  <span class="item-value text-amber" id="clinical-worst-min">--</span>
+                  <span class="item-desc">Minuto que tomó más esfuerzo</span>
                 </div>
-              </div>
-
-              <!-- Desglose de segundos inválidos por razón (cuando viene en meta.json) -->
-              <div class="artifact-reasons-box" id="artifact-reasons-box" style="display:none;">
-                <span class="artifact-reasons-title">Desglose de ruido por electrodo (meta.json):</span>
-                <div class="artifact-reasons-pills" id="artifact-reasons-pills"></div>
               </div>
             </div>
 
@@ -576,21 +587,21 @@
                 <svg viewBox="0 0 20 20" width="18" height="18" fill="currentColor">
                   <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
                 </svg>
-                Complete session
+                Finalizar revisión de sesión
               </button>
               <div class="actions-row">
                 <label class="btn btn-secondary file-upload-btn" id="upload-csv-label">
                   <svg viewBox="0 0 20 20" width="16" height="16" fill="currentColor">
                     <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
                   </svg>
-                  Cargar CSV / JSON
+                  Cargar otra sesión
                   <input type="file" id="csv-file-input" accept=".csv,.json" multiple style="display:none">
                 </label>
                 <button class="btn btn-secondary" id="btn-export-summary">
                   <svg viewBox="0 0 20 20" width="16" height="16" fill="currentColor">
                     <path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm5 6a1 1 0 10-2 0v3.586l-1.293-1.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V8z" clip-rule="evenodd"/>
                   </svg>
-                  Exportar JSON
+                  Descargar Resumen
                 </button>
               </div>
             </div>
@@ -603,36 +614,32 @@
     </main>
   </div>
 
-  <!-- Modal de Información Técnica y Clínica -->
+  <!-- Modal de Ayuda en Lenguaje Sencillo -->
   <div class="modal-backdrop" id="info-modal" style="display:none">
     <div class="modal-dialog">
       <div class="modal-header">
-        <h2>Arquitectura de Entrenamiento y Resumen</h2>
+        <h2>¿Cómo interpretar tu Resumen de Sesión?</h2>
         <button class="close-modal-btn" id="close-info-modal" aria-label="Cerrar modal">&times;</button>
       </div>
       <div class="modal-body">
-        <p>Este informe post-sesión sintetiza el entrenamiento adquirido con <strong>Muse 2</strong> a 1 muestra por segundo (1 Hz) por banda.</p>
+        <p>Este resumen traduce la actividad de tu mente durante el entrenamiento en tres niveles visuales fáciles de comprender:</p>
         
         <div class="info-card">
-          <h4>Gráfica de Pastel Climática (☀️ / ☁️ / ⛈️)</h4>
+          <h4>Los 3 Niveles de tu Gráfica Circular</h4>
           <ul>
-            <li><strong>☀️ Solecito (Muy Bien / Deep Zone):</strong> Segundos donde el rendimiento superó con holgura el umbral (factor <code>1.25×</code>) o hubo cumplimiento total simultáneo de bandas.</li>
-            <li><strong>☁️ Nubecita (Bien / En Zona):</strong> El paciente se mantuvo dentro del umbral objetivo (<code>success = 1</code>). La suma de <strong>☀️ + ☁️</strong> representa el <strong>% total enfocado</strong>.</li>
-            <li><strong>⛈️ Tormenta (Fuera de Zona):</strong> Actividad fuera del umbral clínico o episodios de sobre-activación.</li>
+            <li><strong>☀️ Muy bien (Amarillo):</strong> Momentos en los que alcanzaste el estado de calma o concentración de manera profunda y sobresaliente.</li>
+            <li><strong>☁️ Bien (Celeste):</strong> Momentos en los que lograste mantenerte dentro de tu zona objetivo de entrenamiento. La suma de <strong>Muy bien + Bien</strong> es tu tiempo total enfocado.</li>
+            <li><strong>⛈️ Fuera de zona (Gris):</strong> Momentos naturales en que tu atención se dispersó o hubo algo de tensión mental antes de volver a enfocarte.</li>
           </ul>
         </div>
 
         <div class="info-card">
-          <h4>Dinámica Reward vs Inhibit</h4>
+          <h4>¿Qué entrenamos en cada habilidad?</h4>
           <ul>
-            <li><strong>Reward (Alfa Baja, Theta en Rob-Train, SMR):</strong> La meta es aumentar la amplitud (<code>value &gt; threshold</code>).</li>
-            <li><strong>Inhibit (Beta Alta, Theta en SMR):</strong> La meta es reducir tensión o distracción (<code>value &lt; threshold</code>). El conmutador <em>"Arriba = Meta"</em> invierte visualmente el gráfico para que arriba siempre signifique éxito.</li>
+            <li><strong>Calma Mental y Relajación (Alfa / Theta):</strong> Buscamos aumentar la serenidad interior y reducir la prisa mental.</li>
+            <li><strong>Atención Sostenida (Beta Baja / SMR):</strong> Buscamos mantener la mente presente, atenta y en calma.</li>
+            <li><strong>Control de Tensión y Estrés (Beta Alta):</strong> Buscamos disminuir los pensamientos acelerados y la sobrecarga mental.</li>
           </ul>
-        </div>
-
-        <div class="info-card">
-          <h4>Manejo de Artefactos y meta.json</h4>
-          <p>Los parpadeos o movimientos musculares generan <code>valid = 0</code>. Se muestran como huecos limpios en la línea y no penalizan el cálculo de porcentajes. Si subes el archivo <code>meta.json</code> junto al CSV, verás el desglose exacto por electrodo.</p>
         </div>
       </div>
     </div>
