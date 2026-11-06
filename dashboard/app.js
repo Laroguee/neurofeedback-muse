@@ -958,14 +958,84 @@
     };
   }
 
+  // Historial dinámico de scores calculados para que las comparativas siempre coincidan
+  const sessionScoreHistory = {};
+
+  function getCalculatedScoreForPreset(presetKey) {
+    if (sessionScoreHistory[presetKey] !== undefined) {
+      return sessionScoreHistory[presetKey];
+    }
+    if (!window.SESSION_PRESETS || !window.SESSION_PRESETS[presetKey]) {
+      return null;
+    }
+    try {
+      const preset = window.SESSION_PRESETS[presetKey];
+      const lines = preset.csv.trim().split(/\r?\n/);
+      const rawHeaders = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
+      const col = {};
+      rawHeaders.forEach((h, idx) => { col[h] = idx; });
+
+      const parsedRows = [];
+      for (let i = 1; i < lines.length; i++) {
+        const lineStr = lines[i].trim();
+        if (!lineStr) continue;
+        const parts = lineStr.split(',');
+        if (parts.length < rawHeaders.length) continue;
+        const tsRaw = parts[col['t_s']] !== undefined ? parts[col['t_s']].trim().replace(/['"]/g, '') : '';
+        const tsVal = tsRaw !== '' ? parseInt(tsRaw, 10) : i - 1;
+        const bandVal = parts[col['band']]?.trim().replace(/['"]/g, '');
+        if (!bandVal || isNaN(tsVal)) continue;
+
+        const rawVal = parts[col['value']]?.trim().replace(/['"]/g, '');
+        const rawThresh = col['threshold'] !== undefined ? parts[col['threshold']]?.trim().replace(/['"]/g, '') : '';
+        const rawValid = col['valid'] !== undefined ? parts[col['valid']]?.trim().replace(/['"]/g, '') : '1';
+        const rawRole = col['role'] !== undefined ? parts[col['role']]?.trim().toLowerCase().replace(/['"]/g, '') : null;
+
+        parsedRows.push({
+          t_s: tsVal,
+          band: bandVal,
+          role: rawRole || (BAND_CONFIG[bandVal]?.role || 'reward'),
+          value: rawVal !== '' && rawVal !== undefined ? parseFloat(rawVal) : null,
+          valid: rawValid !== '' && rawValid !== undefined ? parseInt(rawValid, 10) : 1,
+          threshold: rawThresh !== '' && rawThresh !== undefined ? parseFloat(rawThresh) : null
+        });
+      }
+
+      const bands = [...new Set(parsedRows.map(r => r.band))];
+      const bMetrics = {};
+      bands.forEach(b => {
+        const bRows = parsedRows.filter(r => r.band === b);
+        const role = bRows[0]?.role || 'reward';
+        bMetrics[b] = computeMetrics(bRows, role);
+      });
+
+      const avgZone = bands.reduce((acc, b) => acc + (bMetrics[b]?.totalZonePct || 0), 0) / (bands.length || 1);
+      const avgDeep = bands.reduce((acc, b) => acc + (bMetrics[b]?.deepZonePct || 0), 0) / (bands.length || 1);
+      const avgStreak = bands.reduce((acc, b) => acc + (bMetrics[b]?.maxStreak || 0), 0) / (bands.length || 1);
+      const score = Math.min(99, Math.round(28 + (avgZone * 0.65) + (avgDeep * 0.45) + Math.min(12, avgStreak * 0.4)));
+
+      sessionScoreHistory[presetKey] = score;
+      return score;
+    } catch (e) {
+      console.warn('Error calculando score para preset', presetKey, e);
+      return null;
+    }
+  }
+
   function computePastSessionScore(currentScore) {
     const sessId = String(metadata.session_id || '');
     const userId = String(metadata.usuario_id || '');
 
-    // Sesión #011: Pertenece al Usuario 003. Su sesión anterior real en el sistema es la #005 (Score real: 32)
+    // Registrar el score actual en memoria
+    if (sessId) {
+      sessionScoreHistory[sessId] = currentScore;
+    }
+
+    // Sesión #011: Pertenece al Usuario 003. Su sesión anterior real es la #005 (del mismo Usuario 003)
     if (sessId === '011') {
+      const prevScore = getCalculatedScoreForPreset('005');
       return {
-        score: 32,
+        score: prevScore !== null ? prevScore : 58,
         hasPrev: true,
         label: 'Sesión #005 previa (Usuario 003)'
       };
