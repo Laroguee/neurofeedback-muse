@@ -162,23 +162,23 @@
             <div class="demo-buttons-row">
               <button type="button" class="btn-demo-card primary-demo" data-preset="011">
                 <span class="demo-card-badge">Sesión #011 · Usuario 003</span>
-                <strong>Entrenamiento Pruebas (3 Bandas)</strong>
-                <span class="demo-card-sub">Low Alpha (8–10 Hz), High Alpha (10–12 Hz) y High Beta (21–30 Hz)</span>
+                <strong>Sesión de Entrenamiento #011</strong>
+                <span class="demo-card-sub">Sesión completa con 3 parámetros de autorregulación</span>
               </button>
               <button type="button" class="btn-demo-card" data-preset="005">
                 <span class="demo-card-badge">Sesión #005 · Usuario 003</span>
-                <strong>Entrenamiento Rob-Train (3 Bandas)</strong>
-                <span class="demo-card-sub">Theta (4–8 Hz), Low Alpha (8–10 Hz) y High Beta (21–30 Hz)</span>
+                <strong>Sesión de Entrenamiento #005</strong>
+                <span class="demo-card-sub">Sesión completa con 3 parámetros de autorregulación</span>
               </button>
               <button type="button" class="btn-demo-card" data-preset="004">
                 <span class="demo-card-badge">Sesión #004 · Usuario 001</span>
-                <strong>Entrenamiento Pruebas (2 Bandas)</strong>
-                <span class="demo-card-sub">Low Alpha (8–10 Hz) y High Beta (21–30 Hz)</span>
+                <strong>Sesión de Entrenamiento #004</strong>
+                <span class="demo-card-sub">Sesión inicial con 2 parámetros de autorregulación</span>
               </button>
               <button type="button" class="btn-demo-card" data-preset="sim-001" id="btn-load-demo">
                 <span class="demo-card-badge">Sesión #003 · Demo Boceto</span>
-                <strong>Entrenamiento SMR / Foco (3 Bandas)</strong>
-                <span class="demo-card-sub">Low Beta / SMR (12–15 Hz), Theta (4–8 Hz) y High Beta (21–30 Hz)</span>
+                <strong>Sesión Demostrativa #003</strong>
+                <span class="demo-card-sub">Sesión de referencia con 3 parámetros de autorregulación</span>
               </button>
             </div>
           </div>
@@ -192,23 +192,10 @@
       <section class="draft-summary-section" id="draft-summary-section" style="display:none;" aria-label="Resumen visual de rendimiento de la sesión">
         <div class="draft-summary-card">
           
-          <!-- Barra de herramientas superior de la tarjeta Pastel -->
+          <!-- Barra superior de la tarjeta Pastel -->
           <div class="draft-card-toolbar">
             <div class="draft-toolbar-left">
               <span class="draft-section-kicker">¿Cómo estuvo tu entrenamiento hoy?</span>
-              <div class="pie-scope-pills" id="pie-scope-pills" role="group" aria-label="Filtrar pastel por área o promedio general">
-                <!-- Generado dinámicamente: "Resumen General" + cada área -->
-              </div>
-            </div>
-
-            <div class="draft-toolbar-right">
-              <div class="draft-control-group" title="Elige cómo resumir tu tiempo en la gráfica circular">
-                <label class="draft-control-label" for="pie-calc-mode">Modo de vista:</label>
-                <select id="pie-calc-mode" class="draft-select">
-                  <option value="zones">Promedio por nivel (Muy bien · Bien · Fuera de zona)</option>
-                  <option value="synergy">Equilibrio simultáneo (Todas en meta · Parcial · Fuera de zona)</option>
-                </select>
-              </div>
             </div>
           </div>
 
@@ -299,14 +286,6 @@
                   <p class="score-exp-item" id="score-formula-text">
                     <strong>¿De dónde sale?</strong> Se calcula a partir del tiempo que estuviste en tu zona objetivo (<strong>Muy bien + Bien</strong>) más un bono por constancia.
                   </p>
-                </div>
-              </div>
-
-              <!-- Desglose rápido del aporte de cada banda entrenada -->
-              <div class="band-contribution-box">
-                <span class="contrib-box-title">Tiempo en zona por banda EEG</span>
-                <div class="band-contrib-list" id="band-contrib-list">
-                  <!-- Generado dinámicamente por cada banda del CSV -->
                 </div>
               </div>
             </div>
@@ -403,12 +382,16 @@
            ==================================================================== -->
       <div class="clinical-section-wrapper" id="clinical-section-wrapper" style="display:none;">
         
-        <!-- Barra de retorno opcional desde Análisis Avanzado hacia Resumen General -->
         <div class="advanced-section-topbar">
-          <button type="button" class="btn-back-to-summary" id="btn-back-to-summary" title="Regresar a la vista principal">
-            ← Volver al Resumen General
-          </button>
           <span class="advanced-section-badge">🔬 Análisis Técnico Avanzado: Series de Tiempo en Microvoltios y Umbrales</span>
+        </div>
+
+        <!-- Desglose técnico de tiempo en zona por banda EEG -->
+        <div class="band-contribution-box advanced-version">
+          <span class="contrib-box-title">Rendimiento por Banda EEG (Clic para ver curva individual)</span>
+          <div class="band-contrib-list" id="band-contrib-list">
+            <!-- Generado dinámicamente por cada banda del CSV -->
+          </div>
         </div>
 
         <!-- Selector de Bandas EEG -->
@@ -663,11 +646,11 @@
         </div>
 
         <div class="info-card">
-          <h4>Bandas Electroencefalográficas (EEG) y Metas</h4>
+          <h4>¿Cómo funciona tu entrenamiento?</h4>
           <ul>
-            <li><strong>Bandas Alpha y Theta (Low Alpha, High Alpha, Theta):</strong> Protocolos dirigidos al refuerzo de ritmos de relajación consciente o autorregulación cortical según el protocolo asignado.</li>
-            <li><strong>Bandas Beta y SMR (Low Beta / SMR, Beta):</strong> Enfocadas en el control rítmico sensorimotor y la atención sostenida.</li>
-            <li><strong>Banda High Beta (21–30 Hz):</strong> Protocolo usualmente enfocado en inhibición para mantener los microvoltios bajo el umbral adaptativo (evitando sobreactivación o artefacto muscular).</li>
+            <li><strong>Entrenamiento guiado:</strong> Durante la sesión, los sensores detectan la actividad de tu mente y te proporcionan retroalimentación inmediata para aprender a autorregularte.</li>
+            <li><strong>Score de la Sesión:</strong> Es una puntuación de 0 a 100 basada en tu estabilidad y el tiempo que mantuviste tu mente dentro de la zona objetivo.</li>
+            <li><strong>Práctica constante:</strong> Cada sesión fortalece tus conexiones neuronales, facilitando que alcances estados de concentración y calma con mayor naturalidad.</li>
           </ul>
         </div>
       </div>

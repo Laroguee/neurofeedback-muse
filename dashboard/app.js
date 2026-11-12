@@ -178,13 +178,6 @@
         setSectionView(nextView);
       });
     }
-
-    const backToSummaryBtn = document.getElementById('btn-back-to-summary');
-    if (backToSummaryBtn) {
-      backToSummaryBtn.addEventListener('click', () => {
-        setSectionView('draft');
-      });
-    }
   }
 
   function setSectionView(viewMode) {
@@ -225,14 +218,6 @@
   }
 
   function setupDraftControls() {
-    const calcModeSelect = document.getElementById('pie-calc-mode');
-    if (calcModeSelect) {
-      calcModeSelect.addEventListener('change', (e) => {
-        pieCalcMode = e.target.value;
-        if (rawData.length > 0) renderDraftSummary();
-      });
-    }
-
     // Interacción con el canvas del pastel
     if (pieCanvas) {
       pieCanvas.addEventListener('mousemove', (e) => {
@@ -737,7 +722,6 @@
   function renderDraftSummary() {
     if (!rawData.length) return;
 
-    renderPieScopePills();
     const dist = computePieDistribution();
     lastPieSlices = dist.slices;
 
@@ -833,39 +817,6 @@
     updateThrivingBadge(focusedPct, sessionScore, dist);
     updateNarrativeBanner(dist, focusedPct);
     drawPieChart(dist.slices);
-  }
-
-  function renderPieScopePills() {
-    const container = document.getElementById('pie-scope-pills');
-    if (!container) return;
-    container.innerHTML = '';
-
-    const allBtn = document.createElement('button');
-    allBtn.type = 'button';
-    allBtn.className = `scope-pill-btn ${pieScope === 'all' ? 'active' : ''}`;
-    allBtn.textContent = `Resumen General (${availableBands.length} bandas)`;
-    allBtn.addEventListener('click', () => {
-      pieScope = 'all';
-      renderDraftSummary();
-    });
-    container.appendChild(allBtn);
-
-    availableBands.forEach(bKey => {
-      const bRole = rawData.find(r => r.band === bKey)?.role || 'reward';
-      const cfg = getBandConfig(bKey, bRole);
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = `scope-pill-btn ${pieScope === bKey ? 'active' : ''}`;
-      btn.textContent = cfg.displayName;
-      btn.addEventListener('click', () => {
-        pieScope = bKey;
-        currentBand = bKey;
-        renderBandTabs();
-        renderCurrentBand();
-        renderDraftSummary();
-      });
-      container.appendChild(btn);
-    });
   }
 
   function computePieDistribution() {
@@ -1133,11 +1084,9 @@
         </div>
       `;
       row.addEventListener('click', () => {
-        pieScope = bKey;
         currentBand = bKey;
         renderBandTabs();
         renderCurrentBand();
-        renderDraftSummary();
       });
       listEl.appendChild(row);
     });
@@ -1310,53 +1259,30 @@
     }
   }
 
-  // Comentario narrativo con rigor neurofisiológico en las bandas
+  // Comentario narrativo en lenguaje claro para el cliente (sin tecnicismos de bandas)
   function updateNarrativeBanner(dist, focusedPct) {
     const textEl = document.getElementById('draft-narrative-text');
     if (!textEl) return;
 
-    const rankedBands = availableBands
-      .map(bKey => {
-        const m = allBandsMetrics[bKey];
-        const role = rawData.find(r => r.band === bKey)?.role || 'reward';
-        const cfg = getBandConfig(bKey, role);
-        return {
-          key: bKey,
-          role,
-          pct: m ? m.totalZonePct : 0,
-          shortName: cfg.shortName,
-          displayName: cfg.displayName
-        };
-      })
-      .sort((a, b) => b.pct - a.pct);
-
-    const bestSkill = rankedBands[0];
-    const leastSkill = rankedBands.length > 1 ? rankedBands[rankedBands.length - 1] : null;
-
-    let openingSentence = '';
+    let opening = '';
     if (focusedPct >= 60) {
-      openingSentence = `Durante la sesión de hoy mantuviste los parámetros en zona el <strong>${focusedPct}%</strong> del tiempo, logrando una autorregulación sobresaliente.`;
+      opening = `Durante la sesión de hoy mantuviste un nivel de enfoque y autorregulación muy sólido, permaneciendo el <strong>${focusedPct}%</strong> del tiempo dentro de tu zona objetivo.`;
     } else if (focusedPct >= 35) {
-      openingSentence = `Durante la sesión de hoy lograste mantenerte en zona objetivo el <strong>${focusedPct}%</strong> del tiempo, con buena capacidad de modulación.`;
+      opening = `Durante la sesión de hoy lograste conectar de manera constante con tu zona objetivo el <strong>${focusedPct}%</strong> del tiempo, respondiendo positivamente al entrenamiento.`;
     } else {
-      openingSentence = `En la sesión de hoy lograste un <strong>${focusedPct}%</strong> de tiempo en zona, transitando una etapa natural de adaptación neuroplástica con el protocolo.`;
+      opening = `En la sesión de hoy estuviste el <strong>${focusedPct}%</strong> del tiempo en zona objetivo, transitando una etapa natural de aprendizaje y adaptación.`;
     }
 
-    let strengthSentence = '';
-    if (bestSkill) {
-      const actionText = bestSkill.role === 'reward' ? 'el refuerzo' : 'la inhibición';
-      strengthSentence = ` Tu mayor estabilidad se observó en ${actionText} de la banda <strong>${bestSkill.displayName}</strong> (${Math.round(bestSkill.pct)}% en zona).`;
-    }
-
-    let nextStepSentence = '';
-    if (leastSkill && leastSkill.key !== bestSkill.key && (bestSkill.pct - leastSkill.pct) >= 8) {
-      const leastAction = leastSkill.role === 'reward' ? 'el refuerzo' : 'la inhibición';
-      nextStepSentence = ` En las próximas sesiones continuaremos fortaleciendo ${leastAction} de <em>${leastSkill.displayName}</em> para consolidar el equilibrio.`;
+    let quality = '';
+    if (dist.sunPct >= 12) {
+      quality = ` Destacaste con un <strong>${dist.sunPct}%</strong> de tiempo en nivel óptimo (Muy bien), superando ampliamente los objetivos de la sesión.`;
     } else {
-      nextStepSentence = ' Mantuviste una respuesta homogénea en todas las bandas monitoreadas.';
+      quality = ` Mantuviste una respuesta estable y equilibrada a lo largo del ejercicio.`;
     }
 
-    textEl.innerHTML = `${openingSentence}${strengthSentence}${nextStepSentence}`;
+    let closing = ' Cada sesión fortalece tu capacidad para entrar en zona con mayor facilidad.';
+
+    textEl.innerHTML = `${opening}${quality}${closing}`;
   }
 
   function drawPieChart(slices) {
