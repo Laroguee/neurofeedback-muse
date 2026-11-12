@@ -105,16 +105,13 @@
           </div>
 
           <div class="header-right-controls">
-            <!-- Conmutador de Vista: Resumen Pastel vs Detalle de Curvas vs Ambas -->
+            <!-- Conmutador de Vista: Resumen General vs Análisis Avanzado -->
             <div class="dashboard-section-switcher" id="dashboard-section-switcher" style="display:none;" role="tablist" aria-label="Modo de resumen">
-              <button type="button" class="section-switch-btn active" data-section="both" id="tab-view-both">
-                <span>🌤️ + 📈</span> Vista Completa
-              </button>
-              <button type="button" class="section-switch-btn" data-section="draft" id="tab-view-draft">
+              <button type="button" class="section-switch-btn active" data-section="draft" id="tab-view-draft">
                 <span>☀️</span> Resumen General
               </button>
-              <button type="button" class="section-switch-btn" data-section="clinical" id="tab-view-clinical">
-                <span>📈</span> Detalle por Área
+              <button type="button" class="section-switch-btn" data-section="advanced" id="tab-view-advanced" title="Habilitar análisis técnico especializado">
+                <span>🔬</span> Análisis Avanzado
               </button>
             </div>
 
@@ -165,23 +162,23 @@
             <div class="demo-buttons-row">
               <button type="button" class="btn-demo-card primary-demo" data-preset="011">
                 <span class="demo-card-badge">Sesión #011 · Usuario 003</span>
-                <strong>Entrenamiento Pruebas (3 Áreas)</strong>
-                <span class="demo-card-sub">Calma mental, Claridad y Control de tensión</span>
+                <strong>Entrenamiento Pruebas (3 Bandas)</strong>
+                <span class="demo-card-sub">Low Alpha (8–10 Hz), High Alpha (10–12 Hz) y High Beta (21–30 Hz)</span>
               </button>
               <button type="button" class="btn-demo-card" data-preset="005">
                 <span class="demo-card-badge">Sesión #005 · Usuario 003</span>
-                <strong>Entrenamiento Rob-Train (3 Áreas)</strong>
-                <span class="demo-card-sub">Relajación profunda, Calma mental y Control de estrés</span>
+                <strong>Entrenamiento Rob-Train (3 Bandas)</strong>
+                <span class="demo-card-sub">Theta (4–8 Hz), Low Alpha (8–10 Hz) y High Beta (21–30 Hz)</span>
               </button>
               <button type="button" class="btn-demo-card" data-preset="004">
                 <span class="demo-card-badge">Sesión #004 · Usuario 001</span>
-                <strong>Entrenamiento Pruebas (2 Áreas)</strong>
-                <span class="demo-card-sub">Calma mental y Control de estrés</span>
+                <strong>Entrenamiento Pruebas (2 Bandas)</strong>
+                <span class="demo-card-sub">Low Alpha (8–10 Hz) y High Beta (21–30 Hz)</span>
               </button>
               <button type="button" class="btn-demo-card" data-preset="sim-001" id="btn-load-demo">
                 <span class="demo-card-badge">Sesión #003 · Demo Boceto</span>
-                <strong>Entrenamiento de Concentración</strong>
-                <span class="demo-card-sub">Atención sostenida, Mente despierta y Calma</span>
+                <strong>Entrenamiento SMR / Foco (3 Bandas)</strong>
+                <span class="demo-card-sub">Low Beta / SMR (12–15 Hz), Theta (4–8 Hz) y High Beta (21–30 Hz)</span>
               </button>
             </div>
           </div>
@@ -305,9 +302,9 @@
                 </div>
               </div>
 
-              <!-- Desglose rápido del aporte de cada área entrenada -->
+              <!-- Desglose rápido del aporte de cada banda entrenada -->
               <div class="band-contribution-box">
-                <span class="contrib-box-title">Tiempo en zona por habilidad entrenada</span>
+                <span class="contrib-box-title">Tiempo en zona por banda EEG</span>
                 <div class="band-contrib-list" id="band-contrib-list">
                   <!-- Generado dinámicamente por cada banda del CSV -->
                 </div>
@@ -326,7 +323,7 @@
               </div>
             </div>
 
-            <!-- Columna Derecha: Insignia Ilustrada con Explicación de su conexión con la Zona Objetivo -->
+            <!-- Columna Derecha: Insignia Ilustrada con Explicación de Inferencia de Estado -->
             <div class="draft-thriving-column">
               <div class="thriving-cloud-badge" id="thriving-badge-card">
                 <div class="thriving-header-tag" id="thriving-status-title">Focused!</div>
@@ -347,30 +344,34 @@
                   </svg>
                 </div>
                 <p class="thriving-status-desc" id="thriving-status-desc">
-                  Lograste sostener tu mente dentro de la zona objetivo de forma constante.
+                  Lograste modular tu actividad cerebral dentro de los parámetros objetivo de la sesión.
                 </p>
                 <div class="thriving-origin-box" id="thriving-origin-box">
-                  <span class="origin-box-title">¿De dónde sale este nivel?</span>
+                  <span class="origin-box-title">Inferencia de Estado Neurofisiológico</span>
                   <p class="origin-box-text" id="thriving-origin-text">
-                    Depende de cuánto tiempo estuviste en tu <strong>Zona Objetivo (Muy bien + Bien)</strong>:
+                    Clasificación estimada según tiempo en <strong>Zona Objetivo (Muy bien + Bien)</strong>:
                   </p>
                   <ul class="origin-tiers-list">
-                    <li id="tier-thriving"><strong>Thriving (Dominio):</strong> 60% o más en zona</li>
-                    <li id="tier-focused"><strong>Focused (Enfocado):</strong> 35% a 59% en zona</li>
-                    <li id="tier-building"><strong>En práctica:</strong> menos de 35% en zona</li>
+                    <li id="tier-thriving"><strong>Thriving (Dominio):</strong> 60% o más en zona objetivo</li>
+                    <li id="tier-focused"><strong>Focused (Enfocado):</strong> 35% a 59% en zona objetivo</li>
+                    <li id="tier-building"><strong>En práctica:</strong> menos de 35% en zona objetivo</li>
                   </ul>
+                  <div class="inference-source-pill" id="inference-source-pill" title="Módulo preparado para conectar a base de datos y modelo de Machine Learning">
+                    <span class="source-dot"></span>
+                    <span id="inference-source-label">Inferencia: Motor Heurístico Local (Listo para API/BD)</span>
+                  </div>
                 </div>
               </div>
             </div>
 
           </div>
 
-          <!-- Banner Narrativo Inferior en Lenguaje Común + Botón Check Verde [✓] -->
+          <!-- Banner Narrativo Inferior + Botón Check Verde [✓] -->
           <div class="draft-narrative-row">
             <div class="narrative-quote-box">
               <span class="quote-mark">“</span>
               <p class="narrative-text" id="draft-narrative-text">
-                Hoy lograste mantener tu mente en calma y enfocada durante buena parte del entrenamiento...
+                Durante esta sesión se evaluaron los parámetros neurofisiológicos de las bandas seleccionadas...
               </p>
               <span class="quote-mark closing">”</span>
             </div>
@@ -382,16 +383,36 @@
             </button>
           </div>
 
+          <!-- Botón al final del Resumen General para habilitar Análisis Avanzado -->
+          <div class="advanced-analysis-trigger-row">
+            <button type="button" class="btn-toggle-advanced-analysis" id="btn-toggle-advanced-analysis" title="Desplegar curvas técnicas detalladas por banda">
+              <span class="advanced-btn-icon">🔬</span>
+              <span id="advanced-btn-toggle-text">Ver Análisis Técnico Avanzado (Curvas por banda y umbrales)</span>
+              <svg class="advanced-btn-chevron" viewBox="0 0 20 20" width="16" height="16" fill="currentColor">
+                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+              </svg>
+            </button>
+            <p class="advanced-btn-hint">Habilita esta vista únicamente si deseas inspeccionar las series temporales en microvoltios y calibración de umbrales.</p>
+          </div>
+
         </div>
       </section>
 
       <!-- ====================================================================
-           SECCIÓN 2: DETALLE DE EVOLUCIÓN Y MÉTRICAS EXPLICADAS AL CLIENTE
+           SECCIÓN 2: ANÁLISIS TÉCNICO AVANZADO (CURVAS POR BANDA Y UMBRALES)
            ==================================================================== -->
       <div class="clinical-section-wrapper" id="clinical-section-wrapper" style="display:none;">
         
-        <!-- Selector de Áreas / Bandas con nombres amigables -->
-        <nav class="band-navigation" aria-label="Selección de habilidad entrenada" id="band-nav">
+        <!-- Barra de retorno opcional desde Análisis Avanzado hacia Resumen General -->
+        <div class="advanced-section-topbar">
+          <button type="button" class="btn-back-to-summary" id="btn-back-to-summary" title="Regresar a la vista principal">
+            ← Volver al Resumen General
+          </button>
+          <span class="advanced-section-badge">🔬 Análisis Técnico Avanzado: Series de Tiempo en Microvoltios y Umbrales</span>
+        </div>
+
+        <!-- Selector de Bandas EEG -->
+        <nav class="band-navigation" aria-label="Selección de banda EEG" id="band-nav">
           <!-- Generado dinámicamente al cargar CSV -->
         </nav>
 
@@ -406,7 +427,7 @@
               <div class="chart-toolbar">
                 <div class="band-meta-info">
                   <span class="role-pill" id="band-role-indicator">Meta: Aumentar</span>
-                  <span class="band-description-text" id="band-description-text">Atención sostenida y tranquilidad</span>
+                  <span class="band-description-text" id="band-description-text">Modulación de amplitud y umbral adaptativo</span>
                 </div>
                 
                 <div class="chart-action-toggles">
@@ -642,11 +663,11 @@
         </div>
 
         <div class="info-card">
-          <h4>¿Qué entrenamos en cada habilidad?</h4>
+          <h4>Bandas Electroencefalográficas (EEG) y Metas</h4>
           <ul>
-            <li><strong>Calma Mental y Relajación (Alfa / Theta):</strong> Buscamos aumentar la serenidad interior y reducir la prisa mental.</li>
-            <li><strong>Atención Sostenida (Beta Baja / SMR):</strong> Buscamos mantener la mente presente, atenta y en calma.</li>
-            <li><strong>Control de Tensión y Estrés (Beta Alta):</strong> Buscamos disminuir los pensamientos acelerados y la sobrecarga mental.</li>
+            <li><strong>Bandas Alpha y Theta (Low Alpha, High Alpha, Theta):</strong> Protocolos dirigidos al refuerzo de ritmos de relajación consciente o autorregulación cortical según el protocolo asignado.</li>
+            <li><strong>Bandas Beta y SMR (Low Beta / SMR, Beta):</strong> Enfocadas en el control rítmico sensorimotor y la atención sostenida.</li>
+            <li><strong>Banda High Beta (21–30 Hz):</strong> Protocolo usualmente enfocado en inhibición para mantener los microvoltios bajo el umbral adaptativo (evitando sobreactivación o artefacto muscular).</li>
           </ul>
         </div>
       </div>
