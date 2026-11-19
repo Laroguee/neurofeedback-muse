@@ -59,6 +59,48 @@
       </div>
     </aside>
 
+    <!-- Barra de Selección de Clientes y Estudios (Supabase) -->
+    <section class="supabase-bar" aria-label="Selección de cliente y estudio desde la nube">
+      <div class="supabase-bar-inner">
+        <div class="supabase-badge" title="Conexión en la nube con Supabase">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <path d="M11.996 2C6.474 2 2 6.474 2 11.996s4.474 9.996 9.996 9.996c5.523 0 9.996-4.474 9.996-9.996S17.519 2 11.996 2zm0 18.25a8.254 8.254 0 110-16.508 8.254 8.254 0 010 16.508z"/>
+            <path d="M12.75 6.75a.75.75 0 00-1.5 0v5.25a.75.75 0 00.22.53l3.75 3.75a.75.75 0 101.06-1.06l-3.53-3.53V6.75z"/>
+          </svg>
+          <span class="pulse-dot green" id="supabase-status-dot"></span>
+          <span id="supabase-status-text"><strong>Supabase:</strong> Clientes & Estudios</span>
+        </div>
+
+        <div class="supabase-selectors">
+          <div class="supabase-field">
+            <label for="select-cloud-client" class="supabase-field-label">Cliente:</label>
+            <select id="select-cloud-client" class="supabase-dropdown">
+              <option value="">Cargando clientes de la nube...</option>
+            </select>
+          </div>
+
+          <div class="supabase-field">
+            <label for="select-cloud-session" class="supabase-field-label">Estudio:</label>
+            <select id="select-cloud-session" class="supabase-dropdown" disabled>
+              <option value="">Elige un cliente...</option>
+            </select>
+          </div>
+
+          <button type="button" class="btn-load-cloud-session" id="btn-load-cloud" disabled title="Cargar y analizar estudio seleccionado">
+            <svg viewBox="0 0 20 20" width="14" height="14" fill="currentColor">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" clip-rule="evenodd"/>
+            </svg>
+            <span>Ver Estudio</span>
+          </button>
+        </div>
+
+        <div class="supabase-client-summary" id="supabase-client-summary" style="display:none;">
+          <span class="client-meta-chip" id="client-summary-target">🎯 Objetivo: Concentración</span>
+          <span class="client-meta-chip" id="client-summary-total">📊 0 sesiones registradas</span>
+        </div>
+      </div>
+    </section>
+
     <!-- Contenedor Principal (App Frame adaptativo) -->
     <main class="dashboard-shell" id="session-summary-app">
       
@@ -658,6 +700,7 @@
   </div>
 
   <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="dataset.js"></script>
   <script src="app.js"></script>
 </body>

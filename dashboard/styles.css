@@ -2439,3 +2439,158 @@ body.mode-desktop .dashboard-body-grid {
   box-shadow: 0 0 6px rgba(52, 211, 153, 0.6);
 }
 
+/* ==========================================================
+   BARRA DE CONEXIÓN CON SUPABASE (CLIENTES Y ESTUDIOS)
+   ========================================================== */
+.supabase-bar {
+  width: 100%;
+  max-width: 1280px;
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: center;
+}
+
+.supabase-bar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  width: 100%;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  border-radius: var(--radius-lg);
+  padding: 8px 16px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.supabase-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: #38BDF8;
+}
+
+.supabase-badge svg {
+  color: #38BDF8;
+  flex-shrink: 0;
+}
+
+.pulse-dot.green {
+  background: #10B981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.8);
+}
+
+.pulse-dot.amber {
+  background: #F59E0B;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.8);
+}
+
+.pulse-dot.red {
+  background: #EF4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.8);
+}
+
+.supabase-selectors {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.supabase-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.supabase-field-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.supabase-dropdown {
+  background: rgba(30, 41, 59, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  color: #FFFFFF;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-family: var(--font-main);
+  outline: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 170px;
+  max-width: 250px;
+}
+
+.supabase-dropdown:focus {
+  border-color: #38BDF8;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
+}
+
+.supabase-dropdown:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-load-cloud-session {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #0284C7, #0369A1);
+  color: #FFFFFF;
+  border: 1px solid rgba(56, 189, 248, 0.5);
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.3);
+}
+
+.btn-load-cloud-session:hover:not(:disabled) {
+  background: linear-gradient(135deg, #0EA5E9, #0284C7);
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.5);
+  transform: translateY(-1px);
+}
+
+.btn-load-cloud-session:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.supabase-client-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.client-meta-chip {
+  font-size: 0.70rem;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  color: #CBD5E1;
+}
+
+.empty-cloud-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  margin-bottom: 12px;
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: var(--radius-md);
+  font-size: 0.78rem;
+  color: #BAE6FD;
+}
+

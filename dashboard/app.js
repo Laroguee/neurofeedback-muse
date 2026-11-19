@@ -137,6 +137,7 @@
     setupEventListeners();
     setupDragAndDrop();
     setupResizeObserver();
+    setupSupabaseIntegration();
     showEmptyState();
   }
 
@@ -539,6 +540,13 @@
 
     const hasRequired = ['t_s', 'band', 'value'].every(key => key in col);
     if (!hasRequired) {
+      // Auto-detección y conversión de series anchas de Muse / Proyecto 3 (timestamp_s, enhanced_1, etc.)
+      if (col['timestamp_s'] !== undefined || col['enhanced_1'] !== undefined) {
+        const converted = convertWideCsvToLong(csvText, customMeta || {});
+        if (converted) {
+          return parseAndProcessCSV(converted, customMeta);
+        }
+      }
       alert('El CSV debe incluir al menos las columnas: t_s, band, value');
       return;
     }
@@ -642,9 +650,11 @@
     const firstRow = rawData[0] || {};
     const sessId = metadata.session_id || firstRow.session_id || '001';
     const displayId = String(sessId) === 'sim-001' ? '003' : sessId;
-    const userSuffix = metadata.usuario_id
-      ? ` · Usuario ${metadata.usuario_id}`
-      : (String(sessId) === 'sim-001' ? ' · Demo Boceto' : '');
+    const userSuffix = metadata.user_name
+      ? ` · ${metadata.user_name} (${metadata.usuario_id || metadata.user_id || '001'})`
+      : (metadata.usuario_id
+        ? ` · Usuario ${metadata.usuario_id}`
+        : (String(sessId) === 'sim-001' ? ' · Demo Boceto' : ''));
     document.getElementById('session-id-display').textContent = `Sesión #${displayId}${userSuffix}`;
 
     const protocolBadge = document.getElementById('protocol-badge');
@@ -655,12 +665,15 @@
 
     // Barra de progreso de sesiones (ej. 5 / 20)
     const numMatch = String(displayId).match(/\d+/);
-    const sessNum = numMatch ? parseInt(numMatch[0], 10) : 3;
-    const pctProgress = Math.min(100, Math.max(5, (sessNum / TOTAL_PROGRAM_SESSIONS) * 100));
+    const sessNum = metadata.session_number || (numMatch ? parseInt(numMatch[0], 10) : 1);
+    const totalSess = metadata.total_sessions || TOTAL_PROGRAM_SESSIONS;
+    const pctProgress = Math.min(100, Math.max(5, (sessNum / totalSess) * 100));
     const fillEl = document.getElementById('session-progress-fill');
     const curEl = document.getElementById('session-progress-current');
+    const progWidget = document.getElementById('session-progress-widget');
     if (fillEl) fillEl.style.width = `${pctProgress}%`;
     if (curEl) curEl.textContent = String(sessNum);
+    if (progWidget) progWidget.style.display = 'flex';
 
     // Duración de la sesión
     const uniqueSeconds = new Set(rawData.map(r => r.t_s)).size;
@@ -1010,6 +1023,23 @@
       sessionScoreHistory[sessId] = currentScore;
     }
 
+    // Si viene configurado dinámicamente desde Supabase:
+    if (metadata.past_session_score !== undefined && metadata.past_session_score !== null) {
+      return {
+        score: metadata.past_session_score,
+        hasPrev: true,
+        label: metadata.past_session_label || 'Sesión anterior'
+      };
+    }
+
+    if (metadata.is_initial_session) {
+      return {
+        score: null,
+        hasPrev: false,
+        label: metadata.past_session_label || 'Sesión inicial de referencia'
+      };
+    }
+
     // Sesión #011: Pertenece al Usuario 003. Su sesión anterior real es la #005 (del mismo Usuario 003)
     if (sessId === '011') {
       const prevScore = getCalculatedScoreForPreset('005');
@@ -1090,6 +1120,391 @@
       });
       listEl.appendChild(row);
     });
+  }
+
+  // =========================================================================
+  // INTEGRACIÓN SUPABASE (CLIENTES Y ESTUDIOS EN LA NUBE)
+  // =========================================================================
+  const SUPABASE_CONFIG = {
+    url: 'https://ingmqscxjqbsotmbnyel.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImluZ21xc2N4anFic290bWJueWVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAyNzM3NTksImV4cCI6MjEwNTg0OTc1OX0.ReHPN4to_wgorAxzvB4n07Xr_vKU_h8RLioLMzLiCwA'
+  };
+
+  let supabaseClient = null;
+  let supabaseClientsCache = [];
+  let supabaseSessionsCache = [];
+  let currentSelectedClient = null;
+
+  function initSupabaseClient() {
+    if (window.supabase && typeof window.supabase.createClient === 'function') {
+      try {
+        supabaseClient = window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+        return true;
+      } catch (e) {
+        console.warn('Error inicializando supabase-js:', e);
+      }
+    }
+    return false;
+  }
+
+  // Consulta HTTP directa vía API REST si la librería CDN estuviera bloqueada
+  async function supabaseRest(endpoint) {
+    const url = `${SUPABASE_CONFIG.url}/rest/v1/${endpoint}`;
+    const res = await fetch(url, {
+      headers: {
+        'apikey': SUPABASE_CONFIG.anonKey,
+        'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    if (!res.ok) {
+      throw new Error(`Error Supabase REST (${res.status}): ${await res.text()}`);
+    }
+    return res.json();
+  }
+
+  // Convierte un CSV ancho de P3 (timestamp_s, enhanced_1, ...) al formato largo del dashboard
+  function convertWideCsvToLong(csvText, meta) {
+    const lines = csvText.trim().split(/\r?\n/);
+    if (lines.length < 2) return '';
+    const headers = lines[0].split(',').map(h => h.trim());
+    const col = {};
+    headers.forEach((h, i) => { col[h] = i; });
+
+    // Mapeo dinámico de bandas
+    const bandMappings = [];
+    for (let i = 1; i <= 4; i++) {
+      const enhBand = meta[`banda_reforzada_${i}`];
+      if (enhBand && col[`enhanced_${i}`] !== undefined) {
+        bandMappings.push({
+          band: enhBand,
+          role: 'reward',
+          valCol: col[`enhanced_${i}`],
+          threshCol: col[`enhanced_threshold_${i}`]
+        });
+      }
+      const inhBand = meta[`banda_inhibida_${i}`];
+      if (inhBand && col[`inhibited_${i}`] !== undefined) {
+        bandMappings.push({
+          band: inhBand,
+          role: 'inhibit',
+          valCol: col[`inhibited_${i}`],
+          threshCol: col[`inhibited_threshold_${i}`]
+        });
+      }
+    }
+
+    // Si no encontró bandas explícitas en meta, mapear según convención estándar
+    if (!bandMappings.length) {
+      if (col['enhanced_1'] !== undefined) bandMappings.push({ band: 'low_alpha', role: 'reward', valCol: col['enhanced_1'], threshCol: col['enhanced_threshold_1'] });
+      if (col['enhanced_2'] !== undefined) bandMappings.push({ band: 'high_alpha', role: 'reward', valCol: col['enhanced_2'], threshCol: col['enhanced_threshold_2'] });
+      if (col['inhibited_1'] !== undefined) bandMappings.push({ band: 'high_beta', role: 'inhibit', valCol: col['inhibited_1'], threshCol: col['inhibited_threshold_1'] });
+    }
+
+    const outLines = ['session_id,t_s,timestamp,band,role,value,valid,threshold,success'];
+    const tsCol = col['timestamp_s'] !== undefined ? col['timestamp_s'] : col['t_s'];
+    const sessionId = meta.session_id || meta.id || 'sesion';
+
+    for (let l = 1; l < lines.length; l++) {
+      const row = lines[l].split(',').map(s => s.trim());
+      if (row.length < headers.length) continue;
+      const t_s = tsCol !== undefined && row[tsCol] !== '' ? parseInt(row[tsCol], 10) : l - 1;
+      if (isNaN(t_s)) continue;
+
+      bandMappings.forEach(m => {
+        const valStr = row[m.valCol];
+        const thStr = m.threshCol !== undefined ? row[m.threshCol] : '';
+        const val = valStr !== '' && valStr !== undefined ? parseFloat(valStr) : null;
+        const th = thStr !== '' && thStr !== undefined ? parseFloat(thStr) : null;
+        const valid = (val !== null && !isNaN(val)) ? 1 : 0;
+        let success = null;
+        if (val !== null && th !== null) {
+          success = m.role === 'reward' ? (val >= th ? 1 : 0) : (val <= th ? 1 : 0);
+        }
+        outLines.push(`${sessionId},${t_s},,${m.band},${m.role},${val !== null ? val : ''},${valid},${th !== null ? th : ''},${success !== null ? success : ''}`);
+      });
+    }
+
+    return outLines.join('\n');
+  }
+
+  // Convierte filas de serie_entrenamiento al formato largo del dashboard
+  function convertSerieEntrenamientoToLong(rows, session, sessionId) {
+    const bandMappings = [];
+    for (let i = 1; i <= 4; i++) {
+      const enhBand = session[`banda_reforzada_${i}`];
+      if (enhBand) {
+        bandMappings.push({
+          band: enhBand,
+          role: 'reward',
+          valKey: `enhanced_${i}`,
+          threshKey: `enhanced_threshold_${i}`
+        });
+      }
+      const inhBand = session[`banda_inhibida_${i}`];
+      if (inhBand) {
+        bandMappings.push({
+          band: inhBand,
+          role: 'inhibit',
+          valKey: `inhibited_${i}`,
+          threshKey: `inhibited_threshold_${i}`
+        });
+      }
+    }
+
+    if (!bandMappings.length) {
+      bandMappings.push({ band: 'low_alpha', role: 'reward', valKey: 'enhanced_1', threshKey: 'enhanced_threshold_1' });
+      bandMappings.push({ band: 'high_alpha', role: 'reward', valKey: 'enhanced_2', threshKey: 'enhanced_threshold_2' });
+      bandMappings.push({ band: 'high_beta', role: 'inhibit', valKey: 'inhibited_1', threshKey: 'inhibited_threshold_1' });
+    }
+
+    const outLines = ['session_id,t_s,timestamp,band,role,value,valid,threshold,success'];
+    rows.forEach(r => {
+      const t_s = parseInt(r.timestamp_s, 10);
+      if (isNaN(t_s)) return;
+
+      bandMappings.forEach(m => {
+        const val = r[m.valKey] !== null && r[m.valKey] !== undefined ? parseFloat(r[m.valKey]) : null;
+        const th = r[m.threshKey] !== null && r[m.threshKey] !== undefined ? parseFloat(r[m.threshKey]) : null;
+        const valid = (val !== null && !isNaN(val)) ? 1 : 0;
+        let success = null;
+        if (val !== null && th !== null) {
+          success = m.role === 'reward' ? (val >= th ? 1 : 0) : (val <= th ? 1 : 0);
+        }
+        outLines.push(`${sessionId},${t_s},,${m.band},${m.role},${val !== null ? val : ''},${valid},${th !== null ? th : ''},${success !== null ? success : ''}`);
+      });
+    });
+
+    return outLines.join('\n');
+  }
+
+  async function setupSupabaseIntegration() {
+    initSupabaseClient();
+    const clientSelect = document.getElementById('select-cloud-client');
+    const sessionSelect = document.getElementById('select-cloud-session');
+    const loadBtn = document.getElementById('btn-load-cloud');
+    const statusDot = document.getElementById('supabase-status-dot');
+    const statusText = document.getElementById('supabase-status-text');
+
+    if (!clientSelect) return;
+
+    try {
+      if (statusText) statusText.innerHTML = '<strong>Supabase:</strong> Conectando...';
+      let clients = [];
+      if (supabaseClient) {
+        const { data, error } = await supabaseClient
+          .from('clientes_perfil')
+          .select('usuario_id, nombre, objetivo_codigo, session_total')
+          .order('usuario_id', { ascending: true });
+        if (error) throw error;
+        clients = data || [];
+      } else {
+        clients = await supabaseRest('clientes_perfil?select=usuario_id,nombre,objetivo_codigo,session_total&order=usuario_id.asc');
+      }
+
+      supabaseClientsCache = clients;
+      if (statusDot) {
+        statusDot.className = 'pulse-dot green';
+      }
+      if (statusText) {
+        statusText.innerHTML = `<strong>Supabase:</strong> ${clients.length} Clientes`;
+      }
+
+      clientSelect.innerHTML = '<option value="">-- Elige un cliente --</option>';
+      clients.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.usuario_id;
+        opt.textContent = `[${c.usuario_id}] ${c.nombre} · ${c.objetivo_codigo || 'General'}`;
+        clientSelect.appendChild(opt);
+      });
+
+      clientSelect.addEventListener('change', async (e) => {
+        const uid = e.target.value;
+        if (!uid) {
+          sessionSelect.innerHTML = '<option value="">Elige un cliente...</option>';
+          sessionSelect.disabled = true;
+          loadBtn.disabled = true;
+          const sumBox = document.getElementById('supabase-client-summary');
+          if (sumBox) sumBox.style.display = 'none';
+          return;
+        }
+        await onClientSelected(uid);
+      });
+
+      sessionSelect.addEventListener('change', () => {
+        loadBtn.disabled = !sessionSelect.value;
+      });
+
+      loadBtn.addEventListener('click', async () => {
+        const uid = clientSelect.value;
+        const sid = sessionSelect.value;
+        if (uid && sid) {
+          await loadSelectedSupabaseStudy(sid, uid);
+        }
+      });
+
+    } catch (err) {
+      console.warn('No se pudo conectar con Supabase:', err);
+      if (statusDot) statusDot.className = 'pulse-dot amber';
+      if (statusText) statusText.innerHTML = '<strong>Supabase:</strong> Modo local (offline)';
+      if (clientSelect) clientSelect.innerHTML = '<option value="">Modo offline (Sin conexión)</option>';
+    }
+  }
+
+  async function onClientSelected(usuarioId) {
+    const sessionSelect = document.getElementById('select-cloud-session');
+    const loadBtn = document.getElementById('btn-load-cloud');
+    const summaryBox = document.getElementById('supabase-client-summary');
+    const targetLabel = document.getElementById('client-summary-target');
+    const totalLabel = document.getElementById('client-summary-total');
+
+    currentSelectedClient = supabaseClientsCache.find(c => c.usuario_id === usuarioId);
+    sessionSelect.disabled = true;
+    sessionSelect.innerHTML = '<option value="">Cargando sesiones...</option>';
+    loadBtn.disabled = true;
+
+    try {
+      let sessions = [];
+      if (supabaseClient) {
+        const { data, error } = await supabaseClient
+          .from('sesiones')
+          .select('id, fecha, numero_sesion_usuario, protocolo_codigo, ts_inicio, ts_fin, banda_reforzada_1, banda_reforzada_2, banda_inhibida_1')
+          .eq('usuario_id', usuarioId)
+          .order('numero_sesion_usuario', { ascending: false });
+        if (error) throw error;
+        sessions = data || [];
+      } else {
+        sessions = await supabaseRest(`sesiones?usuario_id=eq.${usuarioId}&select=id,fecha,numero_sesion_usuario,protocolo_codigo,ts_inicio,ts_fin,banda_reforzada_1,banda_reforzada_2,banda_inhibida_1&order=numero_sesion_usuario.desc`);
+      }
+
+      supabaseSessionsCache = sessions;
+
+      if (summaryBox && currentSelectedClient) {
+        summaryBox.style.display = 'flex';
+        if (targetLabel) targetLabel.textContent = `🎯 Objetivo: ${currentSelectedClient.objetivo_codigo || 'Concentración'}`;
+        if (totalLabel) totalLabel.textContent = `📊 ${sessions.length} / ${currentSelectedClient.session_total || 20} sesiones`;
+      }
+
+      if (!sessions.length) {
+        sessionSelect.innerHTML = '<option value="">Sin sesiones registradas</option>';
+        sessionSelect.disabled = true;
+        return;
+      }
+
+      sessionSelect.innerHTML = '';
+      sessions.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.id;
+        const numText = s.numero_sesion_usuario ? `Sesión #${s.numero_sesion_usuario}` : `Sesión #${s.id}`;
+        const dateText = s.fecha || '';
+        const protoText = s.protocolo_codigo ? `(${s.protocolo_codigo})` : '';
+        opt.textContent = `${numText} · ${dateText} ${protoText}`;
+        sessionSelect.appendChild(opt);
+      });
+
+      sessionSelect.disabled = false;
+      loadBtn.disabled = false;
+
+      // Auto-seleccionar la sesión más reciente
+      sessionSelect.value = sessions[0].id;
+
+    } catch (e) {
+      console.error('Error cargando sesiones del cliente:', e);
+      sessionSelect.innerHTML = '<option value="">Error cargando sesiones</option>';
+    }
+  }
+
+  async function loadSelectedSupabaseStudy(sessionId, usuarioId) {
+    const statusText = document.getElementById('supabase-status-text');
+    if (statusText) statusText.innerHTML = `<strong>Supabase:</strong> Cargando #${sessionId}...`;
+
+    const sessionObj = supabaseSessionsCache.find(s => s.id === sessionId);
+    const clientObj = currentSelectedClient || supabaseClientsCache.find(c => c.usuario_id === usuarioId);
+
+    try {
+      // 1. Intentar cargar desde entregas_p3 (tiene el CSV original completo y metadatos)
+      let entrega = null;
+      if (supabaseClient) {
+        const { data, error } = await supabaseClient
+          .from('entregas_p3')
+          .select('metadatos, serie_csv')
+          .eq('sesion_id', sessionId)
+          .eq('usuario_id', usuarioId)
+          .maybeSingle();
+        if (!error && data) entrega = data;
+      } else {
+        const list = await supabaseRest(`entregas_p3?sesion_id=eq.${sessionId}&usuario_id=eq.${usuarioId}&select=metadatos,serie_csv`);
+        if (list && list.length) entrega = list[0];
+      }
+
+      let parsedCsvString = '';
+      const meta = Object.assign({}, sessionObj || {}, entrega?.metadatos || {});
+      meta.id = sessionId;
+      meta.session_id = sessionId;
+      meta.usuario_id = usuarioId;
+      meta.user_name = clientObj?.nombre || `Usuario ${usuarioId}`;
+      meta.session_number = sessionObj?.numero_sesion_usuario || 1;
+      meta.total_sessions = clientObj?.session_total || TOTAL_PROGRAM_SESSIONS;
+      meta.objective = clientObj?.objetivo_codigo || 'concentracion';
+
+      // Identificar la sesión anterior de este usuario para calcular el Score comparativo
+      const allUserSessions = supabaseSessionsCache.slice().sort((a, b) => (a.numero_sesion_usuario || 0) - (b.numero_sesion_usuario || 0));
+      const curIdx = allUserSessions.findIndex(s => s.id === sessionId);
+      if (curIdx > 0) {
+        const prevSession = allUserSessions[curIdx - 1];
+        // Calcular o recuperar el score de la sesión previa
+        const prevScore = getCalculatedScoreForPreset(prevSession.id);
+        meta.past_session_score = prevScore;
+        meta.past_session_label = `Sesión anterior (#${prevSession.numero_sesion_usuario || prevSession.id})`;
+        meta.is_initial_session = false;
+      } else {
+        meta.past_session_score = null;
+        meta.is_initial_session = true;
+        meta.past_session_label = 'Sesión inicial de referencia';
+      }
+
+      if (entrega && entrega.serie_csv) {
+        parsedCsvString = convertWideCsvToLong(entrega.serie_csv, meta);
+      } else {
+        // Fallback: consultar serie_entrenamiento
+        let rows = [];
+        if (supabaseClient) {
+          const { data, error } = await supabaseClient
+            .from('serie_entrenamiento')
+            .select('*')
+            .eq('sesion_id', sessionId)
+            .order('timestamp_s', { ascending: true });
+          if (!error && data) rows = data;
+        } else {
+          rows = await supabaseRest(`serie_entrenamiento?sesion_id=eq.${sessionId}&select=*&order=timestamp_s.asc`);
+        }
+        if (rows && rows.length) {
+          parsedCsvString = convertSerieEntrenamientoToLong(rows, sessionObj || meta, sessionId);
+        }
+      }
+
+      if (!parsedCsvString) {
+        // Último fallback: verificar si está en los presets precargados de dataset.js
+        if (window.SESSION_PRESETS && window.SESSION_PRESETS[sessionId]) {
+          parsedCsvString = window.SESSION_PRESETS[sessionId].csv;
+        } else {
+          alert(`No se encontraron registros de datos para la sesión #${sessionId}`);
+          return;
+        }
+      }
+
+      // Procesar e inyectar en el motor del dashboard
+      parseAndProcessCSV(parsedCsvString, meta);
+
+      if (statusText) {
+        statusText.innerHTML = `<strong>Supabase:</strong> ${meta.user_name} · #${sessionId}`;
+      }
+
+    } catch (e) {
+      console.error('Error al cargar estudio desde Supabase:', e);
+      alert('Error al cargar los datos de la sesión desde la nube: ' + e.message);
+      if (statusText) statusText.innerHTML = '<strong>Supabase:</strong> Error al cargar';
+    }
   }
 
   // =========================================================================
