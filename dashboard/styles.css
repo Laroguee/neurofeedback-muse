@@ -2594,3 +2594,138 @@ body.mode-desktop .dashboard-body-grid {
   color: #BAE6FD;
 }
 
+/* Vinculación de subida local con cliente en Supabase */
+.cloud-link-box {
+  width: 100%;
+  margin-top: 18px;
+  padding: 14px 16px;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(56, 189, 248, 0.24);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+}
+
+.cloud-link-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cloud-link-kicker {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #38BDF8;
+}
+
+.cloud-link-sub {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.cloud-link-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.cloud-link-extra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.cloud-link-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cloud-link-input {
+  background: rgba(30, 41, 59, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  color: #FFFFFF;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-family: var(--font-main);
+  outline: none;
+  min-width: 120px;
+  max-width: 190px;
+}
+
+.cloud-link-input:focus {
+  border-color: #38BDF8;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
+}
+
+.btn-cloud-save {
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(16, 185, 129, 0.45);
+  color: #34D399;
+}
+
+.btn-cloud-save:hover {
+  background: rgba(16, 185, 129, 0.25);
+  border-color: #10B981;
+  color: #FFFFFF;
+}
+
+.cloud-modal-dialog {
+  max-width: 460px;
+}
+
+.cloud-modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.cloud-modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.cloud-modal-field label {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.cloud-modal-field .supabase-dropdown,
+.cloud-modal-field .cloud-link-input {
+  width: 100%;
+  max-width: 100%;
+}
+
+.cloud-modal-status {
+  font-size: 0.78rem;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  margin: 0;
+}
+
+.cloud-modal-status.info {
+  background: rgba(56, 189, 248, 0.12);
+  color: #BAE6FD;
+}
+
+.cloud-modal-status.error {
+  background: rgba(239, 68, 68, 0.14);
+  color: #FCA5A5;
+}
+
+.cloud-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+

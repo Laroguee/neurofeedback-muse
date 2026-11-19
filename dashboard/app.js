@@ -24,13 +24,14 @@
   let hoveredPieSlice = null;
   let lastPieSlices = [];
 
-  let metadata = window.DEFAULT_METADATA || {
-    session_id: 'sim-001',
-    protocol_name: 'Foco y Calma',
+  let metadata = {
+    session_id: '',
+    protocol_name: '',
     device: 'Muse 2',
     channels: ['TP9', 'AF7', 'AF8', 'TP10'],
     sampling_rate: 256
   };
+  let lastLoadedLocalSource = null;
 
   // Nomenclatura Electroencefalográfica Estándar (Bandas EEG y Rangos en Hz)
   const BAND_CONFIG = {
@@ -285,14 +286,8 @@
       if (input) input.addEventListener('change', handleFileUpload);
     });
 
-    // Botones de sesiones pre-cargadas (005, 004, sim-001)
-    const presetBtns = document.querySelectorAll('[data-preset]');
-    presetBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const presetId = btn.getAttribute('data-preset');
-        loadPresetSession(presetId);
-      });
-    });
+    // Vinculación opcional de archivo local a cliente en Supabase
+    setupLocalCloudLinkControls();
 
     // Modal
     const infoModal = document.getElementById('info-modal');
@@ -371,11 +366,13 @@
     availableBands = [];
     currentMetrics = null;
     allBandsMetrics = {};
+    lastLoadedLocalSource = null;
 
     const emptyState = document.getElementById('empty-state-view');
     const draftSection = document.getElementById('draft-summary-section');
     const clinicalWrapper = document.getElementById('clinical-section-wrapper');
     const headerUploadLabel = document.getElementById('header-upload-label');
+    const saveCloudBtn = document.getElementById('btn-save-local-to-cloud');
     const sectionSwitcher = document.getElementById('dashboard-section-switcher');
     const progressWidget = document.getElementById('session-progress-widget');
 
@@ -383,6 +380,7 @@
     if (draftSection) draftSection.style.display = 'none';
     if (clinicalWrapper) clinicalWrapper.style.display = 'none';
     if (headerUploadLabel) headerUploadLabel.style.display = 'none';
+    if (saveCloudBtn) saveCloudBtn.style.display = 'none';
     if (sectionSwitcher) sectionSwitcher.style.display = 'none';
     if (progressWidget) progressWidget.style.display = 'none';
 
@@ -398,6 +396,13 @@
     if (durationEl) durationEl.textContent = '--';
   }
 
+  function updateSaveToCloudButtonVisibility() {
+    const saveCloudBtn = document.getElementById('btn-save-local-to-cloud');
+    if (!saveCloudBtn) return;
+    const canSave = Boolean(lastLoadedLocalSource && !lastLoadedLocalSource.savedToCloud && rawData.length > 0);
+    saveCloudBtn.style.display = canSave ? 'inline-flex' : 'none';
+  }
+
   function hideEmptyState() {
     const emptyState = document.getElementById('empty-state-view');
     const headerUploadLabel = document.getElementById('header-upload-label');
@@ -408,6 +413,7 @@
     if (headerUploadLabel) headerUploadLabel.style.display = 'inline-flex';
     if (sectionSwitcher) sectionSwitcher.style.display = 'inline-flex';
     if (progressWidget) progressWidget.style.display = 'flex';
+    updateSaveToCloudButtonVisibility();
 
     const statusBadge = document.getElementById('header-status-badge');
     if (statusBadge) {
@@ -416,24 +422,6 @@
     }
 
     applySectionVisibility();
-  }
-
-  function loadPresetSession(presetId) {
-    document.querySelectorAll('.preset-pill-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.getAttribute('data-preset') === presetId);
-    });
-
-    if (window.SESSION_PRESETS && window.SESSION_PRESETS[presetId]) {
-      const preset = window.SESSION_PRESETS[presetId];
-      metadata = JSON.parse(JSON.stringify(preset.meta));
-      parseCSV(preset.csv, metadata);
-      return;
-    }
-
-    if (window.DEFAULT_CSV_RAW) {
-      metadata = JSON.parse(JSON.stringify(window.DEFAULT_METADATA || {}));
-      parseCSV(window.DEFAULT_CSV_RAW, metadata);
-    }
   }
 
   function handleFileUpload(e) {
@@ -458,6 +446,9 @@
         try {
           const parsedMeta = JSON.parse(ev.target.result);
           metadata = { ...metadata, ...parsedMeta };
+          if (lastLoadedLocalSource) {
+            lastLoadedLocalSource.rawMetaObj = { ...(lastLoadedLocalSource.rawMetaObj || {}), ...parsedMeta };
+          }
           if (rawData.length > 0) {
             updateHeaderFromMetadata();
             renderCurrentBand();
@@ -483,14 +474,47 @@
           console.warn('JSON inválido:', e);
         }
         const csvReader = new FileReader();
-        csvReader.onload = (cEv) => parseCSV(cEv.target.result, customMeta);
+        csvReader.onload = (cEv) => handleLocalCsvLoaded(cEv.target.result, customMeta);
         csvReader.readAsText(csvFile);
       };
       jsonReader.readAsText(jsonFile);
     } else if (csvFile) {
       const csvReader = new FileReader();
-      csvReader.onload = (cEv) => parseCSV(cEv.target.result, null);
+      csvReader.onload = (cEv) => handleLocalCsvLoaded(cEv.target.result, null);
       csvReader.readAsText(csvFile);
+    }
+  }
+
+  async function handleLocalCsvLoaded(csvText, customMeta = null) {
+    const firstLine = (csvText || '').trim().split(/\r?\n/)[0] || '';
+    const lowerHeader = firstLine.toLowerCase();
+    const isWide = !lowerHeader.includes('band') && (lowerHeader.includes('timestamp_s') || lowerHeader.includes('enhanced_1'));
+
+    lastLoadedLocalSource = {
+      rawCsvText: csvText,
+      rawMetaObj: customMeta ? { ...customMeta } : null,
+      isWideCsv: isWide,
+      savedToCloud: false
+    };
+
+    const ok = parseCSV(csvText, customMeta);
+    if (!ok) {
+      lastLoadedLocalSource = null;
+      return;
+    }
+
+    const uploadClientSelect = document.getElementById('select-upload-client');
+    const selectedClientId = uploadClientSelect ? uploadClientSelect.value : '';
+    if (selectedClientId) {
+      const sidInput = document.getElementById('input-upload-session-id');
+      const protoInput = document.getElementById('input-upload-protocol');
+      const sesionId = (sidInput?.value || '').trim();
+      const protocolCode = (protoInput?.value || '').trim();
+      await saveLocalStudyToSupabase({
+        usuarioId: selectedClientId,
+        sesionId,
+        protocolCode
+      });
     }
   }
 
@@ -517,11 +541,10 @@
     };
   }
 
-  function parseCSV(csvText, customMeta = null) {
+  function parseLongCsvRows(csvText, customMeta = null) {
     const lines = csvText.trim().split(/\r?\n/);
     if (lines.length < 2) {
-      alert('El archivo CSV no contiene suficientes datos.');
-      return;
+      return { error: 'El archivo CSV no contiene suficientes datos.', rows: [] };
     }
 
     const firstLine = lines[0];
@@ -544,11 +567,10 @@
       if (col['timestamp_s'] !== undefined || col['enhanced_1'] !== undefined) {
         const converted = convertWideCsvToLong(csvText, customMeta || {});
         if (converted) {
-          return parseAndProcessCSV(converted, customMeta);
+          return parseLongCsvRows(converted, customMeta);
         }
       }
-      alert('El CSV debe incluir al menos las columnas: t_s, band, value');
-      return;
+      return { error: 'El CSV debe incluir al menos las columnas: t_s, band, value', rows: [] };
     }
 
     const parsed = [];
@@ -585,18 +607,26 @@
     }
 
     if (!parsed.length) {
-      alert('No se pudieron extraer filas válidas del CSV.');
-      return;
+      return { error: 'No se pudieron extraer filas válidas del CSV.', rows: [] };
     }
 
+    return { error: null, rows: parsed };
+  }
+
+  function parseCSV(csvText, customMeta = null) {
+    const result = parseLongCsvRows(csvText, customMeta);
+    if (result.error) {
+      alert(result.error);
+      return false;
+    }
+
+    const parsed = result.rows;
     rawData = parsed;
     availableBands = [...new Set(parsed.map(r => r.band))];
 
     const detectedId = parsed[0]?.session_id;
     if (customMeta) {
-      metadata = customMeta;
-    } else if (detectedId && window.SESSION_PRESETS && window.SESSION_PRESETS[detectedId]?.meta) {
-      metadata = JSON.parse(JSON.stringify(window.SESSION_PRESETS[detectedId].meta));
+      metadata = { ...customMeta };
     } else {
       metadata = {
         session_id: detectedId || '001',
@@ -604,6 +634,10 @@
         device: 'Muse 2',
         sampling_rate: 256
       };
+    }
+
+    if (!metadata.session_id && detectedId) {
+      metadata.session_id = detectedId;
     }
 
     allBandsMetrics = {};
@@ -628,6 +662,7 @@
     resizeCanvas();
     renderCurrentBand();
     renderDraftSummary();
+    return true;
   }
 
   function inferProtocolName(bands) {
@@ -646,21 +681,59 @@
     return 'Protocolo EEG Multibanda';
   }
 
+  function formatProtocolDisplayName(protocoloCodigo, bands) {
+    if (!protocoloCodigo) return inferProtocolName(bands);
+    const map = {
+      pruebas: 'Pruebas',
+      pruebas_ha_hb: 'Pruebas (High Alpha / High Beta)',
+      rob_train: 'Rob-Train',
+      concentracion: 'Concentración / Foco Clínico'
+    };
+    if (map[protocoloCodigo]) return map[protocoloCodigo];
+    return String(protocoloCodigo)
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  function computeDurationSeconds(meta, rows) {
+    if (meta.duration_s && !isNaN(meta.duration_s) && Number(meta.duration_s) > 0) {
+      return Math.round(Number(meta.duration_s));
+    }
+    const startMs = Date.parse(meta.start_time || meta.ts_inicio || '');
+    const endMs = Date.parse(meta.end_time || meta.ts_fin || '');
+    if (!isNaN(startMs) && !isNaN(endMs) && endMs > startMs) {
+      return Math.round((endMs - startMs) / 1000);
+    }
+    if (rows && rows.length) {
+      const tsVals = rows.map(r => r.t_s).filter(t => !isNaN(t));
+      if (tsVals.length) {
+        const minT = Math.min(...tsVals);
+        const maxT = Math.max(...tsVals);
+        const dt = detectTimeStepSeconds(rows);
+        if (maxT > minT) {
+          return minT <= dt ? maxT : (maxT - minT + dt);
+        }
+        return new Set(tsVals).size * dt;
+      }
+    }
+    return 0;
+  }
+
   function updateHeaderFromMetadata() {
     const firstRow = rawData[0] || {};
     const sessId = metadata.session_id || firstRow.session_id || '001';
-    const displayId = String(sessId) === 'sim-001' ? '003' : sessId;
+    const displayId = String(sessId);
     const userSuffix = metadata.user_name
       ? ` · ${metadata.user_name} (${metadata.usuario_id || metadata.user_id || '001'})`
       : (metadata.usuario_id
         ? ` · Usuario ${metadata.usuario_id}`
-        : (String(sessId) === 'sim-001' ? ' · Demo Boceto' : ''));
+        : '');
     document.getElementById('session-id-display').textContent = `Sesión #${displayId}${userSuffix}`;
 
     const protocolBadge = document.getElementById('protocol-badge');
+    const protoName = metadata.protocol_name || formatProtocolDisplayName(metadata.protocolo_codigo, availableBands);
     if (protocolBadge) {
-      const pName = metadata.protocol_name || inferProtocolName(availableBands);
-      protocolBadge.textContent = `Protocolo: ${pName}`;
+      protocolBadge.textContent = `Entrenamiento: ${protoName}`;
     }
 
     // Barra de progreso de sesiones (ej. 5 / 20)
@@ -676,8 +749,7 @@
     if (progWidget) progWidget.style.display = 'flex';
 
     // Duración de la sesión
-    const uniqueSeconds = new Set(rawData.map(r => r.t_s)).size;
-    const durationSec = metadata.duration_s || uniqueSeconds;
+    const durationSec = computeDurationSeconds(metadata, rawData);
     const mins = Math.floor(durationSec / 60);
     const secs = durationSec % 60;
     const durationFormatted = mins > 0
@@ -686,27 +758,26 @@
     const durationEl = document.getElementById('quick-duration');
     if (durationEl) durationEl.textContent = durationFormatted;
 
-    // Fecha/hora
-    const tsSource = metadata.start_time || firstRow.timestamp;
-    if (tsSource) {
-      try {
-        const d = new Date(tsSource);
-        if (!isNaN(d.getTime())) {
-          const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          const dateStr = d.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
-          document.getElementById('header-time').textContent = `${timeStr} · ${dateStr}`;
-        } else {
-          document.getElementById('header-time').textContent = tsSource;
+    // Fecha/hora (soporta start_time local y ts_inicio/fecha de Supabase)
+    const tsSource = metadata.start_time || metadata.ts_inicio || metadata.fecha || firstRow.timestamp;
+    const headerTimeEl = document.getElementById('header-time');
+    if (headerTimeEl) {
+      if (tsSource) {
+        try {
+          const d = new Date(tsSource);
+          if (!isNaN(d.getTime())) {
+            const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const dateStr = d.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
+            headerTimeEl.textContent = `${timeStr} · ${dateStr}`;
+          } else {
+            headerTimeEl.textContent = tsSource;
+          }
+        } catch (e) {
+          headerTimeEl.textContent = tsSource;
         }
-      } catch (e) {
-        document.getElementById('header-time').textContent = tsSource;
+      } else {
+        headerTimeEl.textContent = 'Sesión local cargada';
       }
-    }
-
-    // Protocolo amigable
-    if (protocolBadge) {
-      const protoName = metadata.protocol_name || inferProtocolName(availableBands);
-      protocolBadge.textContent = `Entrenamiento: ${protoName}`;
     }
 
     const electrodesText = document.getElementById('device-electrodes-text');
@@ -832,6 +903,26 @@
     drawPieChart(dist.slices);
   }
 
+  function computeSessionScoreFromMetrics(bands, metricsMap) {
+    if (!bands || !bands.length) return 0;
+    const avgZonePct = bands.reduce((acc, b) => acc + (metricsMap[b]?.totalZonePct || 0), 0) / bands.length;
+    const avgDeepPct = bands.reduce((acc, b) => acc + (metricsMap[b]?.deepZonePct || 0), 0) / bands.length;
+    const avgMaxStreak = bands.reduce((acc, b) => acc + (metricsMap[b]?.maxStreak || 0), 0) / bands.length;
+    return Math.min(99, Math.round(28 + (avgZonePct * 0.65) + (avgDeepPct * 0.45) + Math.min(12, avgMaxStreak * 0.4)));
+  }
+
+  function computeSessionScoreFromRows(rows) {
+    if (!rows || !rows.length) return null;
+    const bands = [...new Set(rows.map(r => r.band))];
+    const bMetrics = {};
+    bands.forEach(b => {
+      const bRows = rows.filter(r => r.band === b);
+      const role = bRows[0]?.role || 'reward';
+      bMetrics[b] = computeMetrics(bRows, role);
+    });
+    return computeSessionScoreFromMetrics(bands, bMetrics);
+  }
+
   function computePieDistribution() {
     const pal = PALETTES.weather;
     let rawSun = 0;
@@ -841,14 +932,15 @@
 
     if (pieScope !== 'all') {
       const m = allBandsMetrics[pieScope];
-      if (m && m.totalValid > 0) {
+      const denom = m ? (m.totalValidSeconds || m.totalValid) : 0;
+      if (m && denom > 0) {
         const sunSec = m.deepZoneSeconds;
         const cloudSec = Math.max(0, m.zoneSeconds - m.deepZoneSeconds);
-        const stormSec = Math.max(0, m.totalValid - m.zoneSeconds);
-        rawSun = (sunSec / m.totalValid) * 100;
-        rawCloud = (cloudSec / m.totalValid) * 100;
-        rawStorm = (stormSec / m.totalValid) * 100;
-        totalCount = m.totalValid;
+        const stormSec = Math.max(0, denom - m.zoneSeconds);
+        rawSun = (sunSec / denom) * 100;
+        rawCloud = (cloudSec / denom) * 100;
+        rawStorm = (stormSec / denom) * 100;
+        totalCount = denom;
       }
     } else if (pieCalcMode === 'synergy') {
       const validSeconds = [...new Set(rawData.filter(r => r.valid === 1 && r.threshold !== null).map(r => r.t_s))];
@@ -881,14 +973,15 @@
 
       availableBands.forEach(bKey => {
         const m = allBandsMetrics[bKey];
-        if (m && m.totalValid > 0) {
-          const bSun = (m.deepZoneSeconds / m.totalValid) * 100;
-          const bCloud = (Math.max(0, m.zoneSeconds - m.deepZoneSeconds) / m.totalValid) * 100;
-          const bStorm = (Math.max(0, m.totalValid - m.zoneSeconds) / m.totalValid) * 100;
+        const denom = m ? (m.totalValidSeconds || m.totalValid) : 0;
+        if (m && denom > 0) {
+          const bSun = (m.deepZoneSeconds / denom) * 100;
+          const bCloud = (Math.max(0, m.zoneSeconds - m.deepZoneSeconds) / denom) * 100;
+          const bStorm = (Math.max(0, denom - m.zoneSeconds) / denom) * 100;
           sumSun += bSun;
           sumCloud += bCloud;
           sumStorm += bStorm;
-          totalCount += m.totalValid;
+          totalCount += denom;
           validBands++;
         }
       });
@@ -904,11 +997,7 @@
     let cloudPct = Math.round(rawCloud);
     let stormPct = Math.max(0, 100 - sunPct - cloudPct);
 
-    const avgZonePct = availableBands.reduce((acc, b) => acc + (allBandsMetrics[b]?.totalZonePct || 0), 0) / (availableBands.length || 1);
-    const avgDeepPct = availableBands.reduce((acc, b) => acc + (allBandsMetrics[b]?.deepZonePct || 0), 0) / (availableBands.length || 1);
-    const avgMaxStreak = availableBands.reduce((acc, b) => acc + (allBandsMetrics[b]?.maxStreak || 0), 0) / (availableBands.length || 1);
-
-    const rawScore = Math.min(99, Math.round(28 + (avgZonePct * 0.65) + (avgDeepPct * 0.45) + Math.min(12, avgMaxStreak * 0.4)));
+    const rawScore = computeSessionScoreFromMetrics(availableBands, allBandsMetrics);
 
     const slices = [
       {
@@ -953,70 +1042,8 @@
   // Historial dinámico de scores calculados para que las comparativas siempre coincidan
   const sessionScoreHistory = {};
 
-  function getCalculatedScoreForPreset(presetKey) {
-    if (sessionScoreHistory[presetKey] !== undefined) {
-      return sessionScoreHistory[presetKey];
-    }
-    if (!window.SESSION_PRESETS || !window.SESSION_PRESETS[presetKey]) {
-      return null;
-    }
-    try {
-      const preset = window.SESSION_PRESETS[presetKey];
-      const lines = preset.csv.trim().split(/\r?\n/);
-      const rawHeaders = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
-      const col = {};
-      rawHeaders.forEach((h, idx) => { col[h] = idx; });
-
-      const parsedRows = [];
-      for (let i = 1; i < lines.length; i++) {
-        const lineStr = lines[i].trim();
-        if (!lineStr) continue;
-        const parts = lineStr.split(',');
-        if (parts.length < rawHeaders.length) continue;
-        const tsRaw = parts[col['t_s']] !== undefined ? parts[col['t_s']].trim().replace(/['"]/g, '') : '';
-        const tsVal = tsRaw !== '' ? parseInt(tsRaw, 10) : i - 1;
-        const bandVal = parts[col['band']]?.trim().replace(/['"]/g, '');
-        if (!bandVal || isNaN(tsVal)) continue;
-
-        const rawVal = parts[col['value']]?.trim().replace(/['"]/g, '');
-        const rawThresh = col['threshold'] !== undefined ? parts[col['threshold']]?.trim().replace(/['"]/g, '') : '';
-        const rawValid = col['valid'] !== undefined ? parts[col['valid']]?.trim().replace(/['"]/g, '') : '1';
-        const rawRole = col['role'] !== undefined ? parts[col['role']]?.trim().toLowerCase().replace(/['"]/g, '') : null;
-
-        parsedRows.push({
-          t_s: tsVal,
-          band: bandVal,
-          role: rawRole || (BAND_CONFIG[bandVal]?.role || 'reward'),
-          value: rawVal !== '' && rawVal !== undefined ? parseFloat(rawVal) : null,
-          valid: rawValid !== '' && rawValid !== undefined ? parseInt(rawValid, 10) : 1,
-          threshold: rawThresh !== '' && rawThresh !== undefined ? parseFloat(rawThresh) : null
-        });
-      }
-
-      const bands = [...new Set(parsedRows.map(r => r.band))];
-      const bMetrics = {};
-      bands.forEach(b => {
-        const bRows = parsedRows.filter(r => r.band === b);
-        const role = bRows[0]?.role || 'reward';
-        bMetrics[b] = computeMetrics(bRows, role);
-      });
-
-      const avgZone = bands.reduce((acc, b) => acc + (bMetrics[b]?.totalZonePct || 0), 0) / (bands.length || 1);
-      const avgDeep = bands.reduce((acc, b) => acc + (bMetrics[b]?.deepZonePct || 0), 0) / (bands.length || 1);
-      const avgStreak = bands.reduce((acc, b) => acc + (bMetrics[b]?.maxStreak || 0), 0) / (bands.length || 1);
-      const score = Math.min(99, Math.round(28 + (avgZone * 0.65) + (avgDeep * 0.45) + Math.min(12, avgStreak * 0.4)));
-
-      sessionScoreHistory[presetKey] = score;
-      return score;
-    } catch (e) {
-      console.warn('Error calculando score para preset', presetKey, e);
-      return null;
-    }
-  }
-
   function computePastSessionScore(currentScore) {
     const sessId = String(metadata.session_id || '');
-    const userId = String(metadata.usuario_id || '');
 
     // Registrar el score actual en memoria
     if (sessId) {
@@ -1032,7 +1059,7 @@
       };
     }
 
-    if (metadata.is_initial_session) {
+    if (metadata.is_initial_session === true) {
       return {
         score: null,
         hasPrev: false,
@@ -1040,47 +1067,18 @@
       };
     }
 
-    // Sesión #011: Pertenece al Usuario 003. Su sesión anterior real es la #005 (del mismo Usuario 003)
-    if (sessId === '011') {
-      const prevScore = getCalculatedScoreForPreset('005');
-      return {
-        score: prevScore !== null ? prevScore : 58,
-        hasPrev: true,
-        label: 'Sesión #005 previa (Usuario 003)'
-      };
-    }
-
-    // Sesión #005: Pertenece al Usuario 003. Es la primera sesión registrada en este conjunto para Usuario 003
-    if (sessId === '005') {
+    if (metadata.is_initial_session === false) {
       return {
         score: null,
         hasPrev: false,
-        label: 'Sesión inicial (Usuario 003)'
-      };
-    }
-
-    // Sesión #004: Pertenece al Usuario 001 (distinto usuario). Es su sesión inicial registrada
-    if (sessId === '004') {
-      return {
-        score: null,
-        hasPrev: false,
-        label: 'Sesión inicial (Usuario 001)'
-      };
-    }
-
-    // Sesión demostrativa #003 (sim-001): Ilustrada en el boceto original
-    if (sessId === 'sim-001') {
-      return {
-        score: 72,
-        hasPrev: true,
-        label: 'Sesión #002 previa (Boceto)'
+        label: metadata.past_session_label ? `${metadata.past_session_label} (sin datos previos)` : 'Sin datos previos'
       };
     }
 
     return {
       score: null,
       hasPrev: false,
-      label: 'Sesión de referencia'
+      label: 'Sesión local de referencia'
     };
   }
 
@@ -1094,9 +1092,10 @@
       if (!m) return;
       const bRole = rawData.find(r => r.band === bKey)?.role || 'reward';
       const cfg = getBandConfig(bKey, bRole);
+      const denom = m.totalValidSeconds || m.totalValid;
 
-      const bSun = m.totalValid > 0 ? Math.round((m.deepZoneSeconds / m.totalValid) * 100) : 0;
-      const bCloud = m.totalValid > 0 ? Math.max(0, Math.round(m.totalZonePct) - bSun) : 0;
+      const bSun = denom > 0 ? Math.round((m.deepZoneSeconds / denom) * 100) : 0;
+      const bCloud = denom > 0 ? Math.max(0, Math.round(m.totalZonePct) - bSun) : 0;
       const bStorm = Math.max(0, 100 - bSun - bCloud);
 
       const row = document.createElement('div');
@@ -1163,6 +1162,23 @@
     return res.json();
   }
 
+  async function supabaseRestRpc(fnName, payload) {
+    const url = `${SUPABASE_CONFIG.url}/rest/v1/rpc/${fnName}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_CONFIG.anonKey,
+        'Authorization': `Bearer ${SUPABASE_CONFIG.anonKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      throw new Error(`Error Supabase RPC (${res.status}): ${await res.text()}`);
+    }
+    return res.json();
+  }
+
   // Convierte un CSV ancho de P3 (timestamp_s, enhanced_1, ...) al formato largo del dashboard
   function convertWideCsvToLong(csvText, meta) {
     const lines = csvText.trim().split(/\r?\n/);
@@ -1214,9 +1230,11 @@
       bandMappings.forEach(m => {
         const valStr = row[m.valCol];
         const thStr = m.threshCol !== undefined ? row[m.threshCol] : '';
-        const val = valStr !== '' && valStr !== undefined ? parseFloat(valStr) : null;
-        const th = thStr !== '' && thStr !== undefined ? parseFloat(thStr) : null;
-        const valid = (val !== null && !isNaN(val)) ? 1 : 0;
+        const parsedVal = valStr !== '' && valStr !== undefined ? parseFloat(valStr) : null;
+        const parsedTh = thStr !== '' && thStr !== undefined ? parseFloat(thStr) : null;
+        const val = (parsedVal !== null && !isNaN(parsedVal)) ? parsedVal : null;
+        const th = (parsedTh !== null && !isNaN(parsedTh)) ? parsedTh : null;
+        const valid = val !== null ? 1 : 0;
         let success = null;
         if (val !== null && th !== null) {
           success = m.role === 'reward' ? (val >= th ? 1 : 0) : (val <= th ? 1 : 0);
@@ -1264,9 +1282,11 @@
       if (isNaN(t_s)) return;
 
       bandMappings.forEach(m => {
-        const val = r[m.valKey] !== null && r[m.valKey] !== undefined ? parseFloat(r[m.valKey]) : null;
-        const th = r[m.threshKey] !== null && r[m.threshKey] !== undefined ? parseFloat(r[m.threshKey]) : null;
-        const valid = (val !== null && !isNaN(val)) ? 1 : 0;
+        const parsedVal = r[m.valKey] !== null && r[m.valKey] !== undefined ? parseFloat(r[m.valKey]) : null;
+        const parsedTh = r[m.threshKey] !== null && r[m.threshKey] !== undefined ? parseFloat(r[m.threshKey]) : null;
+        const val = (parsedVal !== null && !isNaN(parsedVal)) ? parsedVal : null;
+        const th = (parsedTh !== null && !isNaN(parsedTh)) ? parsedTh : null;
+        const valid = val !== null ? 1 : 0;
         let success = null;
         if (val !== null && th !== null) {
           success = m.role === 'reward' ? (val >= th ? 1 : 0) : (val <= th ? 1 : 0);
@@ -1278,9 +1298,370 @@
     return outLines.join('\n');
   }
 
+  // Convierte filas largas del dashboard al formato ancho requerido por subir_entrega_p3 (timestamp_s,...)
+  function convertLongRowsToWideCsv(rows, metaObj) {
+    const rewardBands = [];
+    const inhibitBands = [];
+
+    rows.forEach(r => {
+      if (r.role === 'inhibit') {
+        if (!inhibitBands.includes(r.band) && inhibitBands.length < 4) inhibitBands.push(r.band);
+      } else {
+        if (!rewardBands.includes(r.band) && rewardBands.length < 4) rewardBands.push(r.band);
+      }
+    });
+
+    const bandFields = {};
+    rewardBands.forEach((b, i) => { bandFields[`banda_reforzada_${i + 1}`] = b; });
+    inhibitBands.forEach((b, i) => { bandFields[`banda_inhibida_${i + 1}`] = b; });
+
+    const headers = ['timestamp_s'];
+    rewardBands.forEach((_, i) => headers.push(`enhanced_${i + 1}`));
+    inhibitBands.forEach((_, i) => headers.push(`inhibited_${i + 1}`));
+    rewardBands.forEach((_, i) => headers.push(`enhanced_threshold_${i + 1}`));
+    inhibitBands.forEach((_, i) => headers.push(`inhibited_threshold_${i + 1}`));
+    headers.push('electrodo_activo', 'electrodo_referencia');
+
+    const byTs = new Map();
+    rows.forEach(r => {
+      if (!byTs.has(r.t_s)) byTs.set(r.t_s, {});
+      byTs.get(r.t_s)[r.band] = r;
+    });
+
+    const sortedTs = [...byTs.keys()].sort((a, b) => a - b);
+    const activeElec = metaObj?.active_electrode || metaObj?.electrodo_activo || '';
+    const refElec = metaObj?.reference_electrode || metaObj?.electrodo_referencia || '';
+
+    const outLines = [headers.join(',')];
+    sortedTs.forEach(ts => {
+      const mapAtT = byTs.get(ts);
+      const lineVals = [ts];
+      rewardBands.forEach(b => {
+        const row = mapAtT[b];
+        lineVals.push(row && row.valid === 1 && row.value !== null ? row.value : '');
+      });
+      inhibitBands.forEach(b => {
+        const row = mapAtT[b];
+        lineVals.push(row && row.valid === 1 && row.value !== null ? row.value : '');
+      });
+      rewardBands.forEach(b => {
+        const row = mapAtT[b];
+        lineVals.push(row && row.threshold !== null && !isNaN(row.threshold) ? row.threshold : '');
+      });
+      inhibitBands.forEach(b => {
+        const row = mapAtT[b];
+        lineVals.push(row && row.threshold !== null && !isNaN(row.threshold) ? row.threshold : '');
+      });
+      lineVals.push(activeElec, refElec);
+      outLines.push(lineVals.join(','));
+    });
+
+    return { wideCsv: outLines.join('\n'), bandFields };
+  }
+
+  function inferProtocolSlug(bandFields, fallbackBands) {
+    const enh1 = bandFields.banda_reforzada_1;
+    const enh2 = bandFields.banda_reforzada_2;
+    const inh1 = bandFields.banda_inhibida_1;
+    if (enh1 === 'theta' && enh2 === 'low_alpha') return 'rob_train';
+    if (enh1 === 'high_alpha' && !enh2 && inh1 === 'high_beta') return 'pruebas_ha_hb';
+    if (enh1 === 'low_alpha' && enh2 === 'high_alpha') return 'pruebas';
+    if (fallbackBands.includes('low_beta')) return 'smr_beta';
+    return 'pruebas';
+  }
+
+  function buildP3MetadataPayload(metaObj, rows, bandFields, protocolOverride) {
+    const firstValidTs = rows.find(r => r.timestamp)?.timestamp;
+    const tsInicio = metaObj?.ts_inicio || metaObj?.start_time || firstValidTs || new Date().toISOString();
+    let tsFin = metaObj?.ts_fin || metaObj?.end_time || null;
+    if (!tsFin) {
+      const durSec = computeDurationSeconds(metaObj || {}, rows) || 60;
+      const startMs = Date.parse(tsInicio);
+      tsFin = !isNaN(startMs) ? new Date(startMs + durSec * 1000).toISOString() : new Date().toISOString();
+    }
+
+    const bandsList = [...new Set(rows.map(r => r.band))];
+    const protoCode = (protocolOverride || metaObj?.protocolo_codigo || inferProtocolSlug(bandFields, bandsList))
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, '_');
+
+    const payload = {
+      ts_inicio: tsInicio,
+      ts_fin: tsFin,
+      protocolo_codigo: protoCode || 'pruebas',
+      dispositivo_codigo: metaObj?.dispositivo_codigo || (metaObj?.device === 'Muse 2' ? 'muse_2' : (metaObj?.device || 'muse_2')),
+      acquisition_method: metaObj?.acquisition_method || 'brainflow_ble',
+      firmware_version: metaObj?.firmware_version || '1.0.27',
+      sampling_rate: metaObj?.sampling_rate || 256,
+      eeg_channels: metaObj?.eeg_channels || metaObj?.channels || ['TP9', 'AF7', 'AF8', 'TP10'],
+      signal_quality_flag: metaObj?.signal_quality_flag || 'ok'
+    };
+
+    for (let i = 1; i <= 4; i++) {
+      const bRef = metaObj?.[`banda_reforzada_${i}`] || bandFields[`banda_reforzada_${i}`];
+      const bInh = metaObj?.[`banda_inhibida_${i}`] || bandFields[`banda_inhibida_${i}`];
+      if (bRef) payload[`banda_reforzada_${i}`] = bRef;
+      if (bInh) payload[`banda_inhibida_${i}`] = bInh;
+    }
+
+    return payload;
+  }
+
+  function populateClientSelectElement(selectEl, defaultLabel) {
+    if (!selectEl) return;
+    const prevValue = selectEl.value;
+    selectEl.innerHTML = `<option value="">${defaultLabel}</option>`;
+    supabaseClientsCache.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.usuario_id;
+      opt.textContent = `[${c.usuario_id}] ${c.nombre} · ${c.objetivo_codigo || 'General'}`;
+      selectEl.appendChild(opt);
+    });
+    if (prevValue) selectEl.value = prevValue;
+  }
+
+  async function suggestNextSupabaseSessionId() {
+    try {
+      let sesRows = [];
+      let entRows = [];
+      if (supabaseClient) {
+        const [sRes, eRes] = await Promise.all([
+          supabaseClient.from('sesiones').select('id'),
+          supabaseClient.from('entregas_p3').select('sesion_id')
+        ]);
+        sesRows = sRes.data || [];
+        entRows = eRes.data || [];
+      } else {
+        [sesRows, entRows] = await Promise.all([
+          supabaseRest('sesiones?select=id'),
+          supabaseRest('entregas_p3?select=sesion_id')
+        ]);
+      }
+
+      let maxNum = 0;
+      sesRows.forEach(r => {
+        const n = parseInt(r.id, 10);
+        if (!isNaN(n) && n > maxNum) maxNum = n;
+      });
+      entRows.forEach(r => {
+        const n = parseInt(r.sesion_id, 10);
+        if (!isNaN(n) && n > maxNum) maxNum = n;
+      });
+      return String(maxNum + 1).padStart(3, '0');
+    } catch (e) {
+      console.warn('No se pudo calcular el siguiente ID de sesión:', e);
+      return '';
+    }
+  }
+
+  function setupLocalCloudLinkControls() {
+    const uploadClientSel = document.getElementById('select-upload-client');
+    const extraFields = document.getElementById('upload-cloud-extra-fields');
+    const sidInput = document.getElementById('input-upload-session-id');
+
+    if (uploadClientSel) {
+      uploadClientSel.addEventListener('change', async () => {
+        const uid = uploadClientSel.value;
+        if (extraFields) extraFields.style.display = uid ? 'flex' : 'none';
+        if (uid && sidInput && !sidInput.value.trim()) {
+          sidInput.value = await suggestNextSupabaseSessionId();
+        }
+      });
+    }
+
+    const saveCloudBtn = document.getElementById('btn-save-local-to-cloud');
+    const cloudModal = document.getElementById('cloud-link-modal');
+    const closeCloudModalBtn = document.getElementById('close-cloud-link-modal');
+    const cancelCloudModalBtn = document.getElementById('btn-cancel-cloud-link');
+    const confirmCloudModalBtn = document.getElementById('btn-confirm-cloud-link');
+    const modalStatus = document.getElementById('cloud-modal-status');
+
+    const closeModal = () => {
+      if (cloudModal) cloudModal.style.display = 'none';
+    };
+
+    if (saveCloudBtn && cloudModal) {
+      saveCloudBtn.addEventListener('click', async () => {
+        const modalClientSel = document.getElementById('modal-select-upload-client');
+        const modalSidInput = document.getElementById('modal-input-session-id');
+        const modalProtoInput = document.getElementById('modal-input-protocol');
+
+        populateClientSelectElement(modalClientSel, '-- Selecciona un cliente --');
+        const topCloudClient = document.getElementById('select-cloud-client')?.value;
+        if (topCloudClient && modalClientSel) modalClientSel.value = topCloudClient;
+
+        if (modalProtoInput) {
+          modalProtoInput.value = metadata.protocolo_codigo || inferProtocolSlug({}, availableBands);
+        }
+        if (modalStatus) modalStatus.style.display = 'none';
+        cloudModal.style.display = 'flex';
+
+        if (modalSidInput) {
+          const suggested = await suggestNextSupabaseSessionId();
+          if (suggested) modalSidInput.value = suggested;
+        }
+      });
+    }
+
+    if (closeCloudModalBtn) closeCloudModalBtn.addEventListener('click', closeModal);
+    if (cancelCloudModalBtn) cancelCloudModalBtn.addEventListener('click', closeModal);
+    if (cloudModal) {
+      cloudModal.addEventListener('click', (e) => {
+        if (e.target === cloudModal) closeModal();
+      });
+    }
+
+    if (confirmCloudModalBtn) {
+      confirmCloudModalBtn.addEventListener('click', async () => {
+        const modalClientSel = document.getElementById('modal-select-upload-client');
+        const modalSidInput = document.getElementById('modal-input-session-id');
+        const modalProtoInput = document.getElementById('modal-input-protocol');
+        const uid = modalClientSel?.value || '';
+        const sid = (modalSidInput?.value || '').trim();
+        const proto = (modalProtoInput?.value || '').trim();
+
+        if (!uid) {
+          if (modalStatus) {
+            modalStatus.textContent = 'Selecciona un cliente antes de guardar.';
+            modalStatus.className = 'cloud-modal-status error';
+            modalStatus.style.display = 'block';
+          }
+          return;
+        }
+
+        confirmCloudModalBtn.disabled = true;
+        confirmCloudModalBtn.textContent = 'Guardando...';
+        if (modalStatus) {
+          modalStatus.textContent = 'Subiendo estudio a Supabase...';
+          modalStatus.className = 'cloud-modal-status info';
+          modalStatus.style.display = 'block';
+        }
+
+        const saved = await saveLocalStudyToSupabase({
+          usuarioId: uid,
+          sesionId: sid,
+          protocolCode: proto
+        });
+
+        confirmCloudModalBtn.disabled = false;
+        confirmCloudModalBtn.textContent = 'Guardar Nuevo Estudio';
+
+        if (saved.ok) {
+          closeModal();
+        } else if (modalStatus) {
+          modalStatus.textContent = saved.error || 'No se pudo guardar el estudio.';
+          modalStatus.className = 'cloud-modal-status error';
+          modalStatus.style.display = 'block';
+        }
+      });
+    }
+  }
+
+  async function saveLocalStudyToSupabase({ usuarioId, sesionId, protocolCode }) {
+    const statusText = document.getElementById('supabase-status-text');
+    if (!rawData.length || !lastLoadedLocalSource) {
+      return { ok: false, error: 'No hay una sesión local cargada para guardar.' };
+    }
+    if (!/^[0-9]{3,}$/.test(usuarioId)) {
+      return { ok: false, error: 'El usuario_id debe tener al menos 3 dígitos.' };
+    }
+
+    try {
+      let targetSessionId = (sesionId || '').trim();
+      if (!targetSessionId) {
+        targetSessionId = await suggestNextSupabaseSessionId();
+      }
+      if (!/^[0-9]{3,}$/.test(targetSessionId)) {
+        const msg = 'El ID de estudio debe ser numérico de 3 o más dígitos (ej. 036).';
+        alert(msg);
+        return { ok: false, error: msg };
+      }
+
+      const baseMeta = Object.assign({}, metadata || {}, lastLoadedLocalSource.rawMetaObj || {});
+      const { wideCsv, bandFields } = convertLongRowsToWideCsv(rawData, baseMeta);
+
+      let serieCsvToUpload = wideCsv;
+      if (lastLoadedLocalSource.isWideCsv && lastLoadedLocalSource.rawCsvText.trim().startsWith('timestamp_s,')) {
+        serieCsvToUpload = lastLoadedLocalSource.rawCsvText.trim();
+      }
+
+      if (!serieCsvToUpload.startsWith('timestamp_s,') || serieCsvToUpload.length < 20 || serieCsvToUpload.length > 2000000) {
+        const msg = 'El CSV generado no cumple con el formato requerido por Supabase (timestamp_s,...).';
+        alert(msg);
+        return { ok: false, error: msg };
+      }
+
+      const pMetadatos = buildP3MetadataPayload(baseMeta, rawData, bandFields, protocolCode);
+      if (statusText) statusText.innerHTML = `<strong>Supabase:</strong> Guardando estudio #${targetSessionId}...`;
+
+      const rpcPayload = {
+        p_sesion_id: targetSessionId,
+        p_usuario_id: usuarioId,
+        p_metadatos: pMetadatos,
+        p_serie_csv: serieCsvToUpload
+      };
+
+      let rpcResult = null;
+      if (supabaseClient) {
+        const { data, error } = await supabaseClient.rpc('subir_entrega_p3', rpcPayload);
+        if (error) throw error;
+        rpcResult = data;
+      } else {
+        rpcResult = await supabaseRestRpc('subir_entrega_p3', rpcPayload);
+      }
+
+      if (typeof rpcResult === 'string' && rpcResult.startsWith('sin_cambios_ingerido')) {
+        const msg = `El ID de estudio #${targetSessionId} ya existe como ingerido para este cliente. Usa otro ID (ej. ${await suggestNextSupabaseSessionId()}).`;
+        if (statusText) statusText.innerHTML = `<strong>Supabase:</strong> ${supabaseClientsCache.length} Clientes`;
+        alert(msg);
+        return { ok: false, error: msg };
+      }
+
+      const clientObj = supabaseClientsCache.find(c => c.usuario_id === usuarioId);
+      metadata = {
+        ...metadata,
+        ...pMetadatos,
+        id: targetSessionId,
+        session_id: targetSessionId,
+        usuario_id: usuarioId,
+        user_name: clientObj?.nombre || `Usuario ${usuarioId}`,
+        protocol_name: formatProtocolDisplayName(pMetadatos.protocolo_codigo, availableBands),
+        start_time: pMetadatos.ts_inicio,
+        end_time: pMetadatos.ts_fin,
+        duration_s: computeDurationSeconds(pMetadatos, rawData)
+      };
+
+      lastLoadedLocalSource.savedToCloud = true;
+      updateSaveToCloudButtonVisibility();
+      updateHeaderFromMetadata();
+
+      const cloudClientSel = document.getElementById('select-cloud-client');
+      const cloudSessionSel = document.getElementById('select-cloud-session');
+      if (cloudClientSel) {
+        cloudClientSel.value = usuarioId;
+        await onClientSelected(usuarioId);
+        if (cloudSessionSel) cloudSessionSel.value = targetSessionId;
+      }
+
+      if (statusText) {
+        statusText.innerHTML = `<strong>Supabase:</strong> Guardado #${targetSessionId} (${metadata.user_name})`;
+      }
+      alert(`✅ Estudio #${targetSessionId} vinculado correctamente al cliente ${metadata.user_name} en Supabase (${rpcResult}).`);
+      return { ok: true, result: rpcResult };
+    } catch (err) {
+      console.error('Error guardando estudio en Supabase:', err);
+      const msg = err.message || 'Error al guardar en Supabase';
+      if (statusText) statusText.innerHTML = '<strong>Supabase:</strong> Error al guardar';
+      alert('No se pudo guardar el estudio en Supabase: ' + msg);
+      return { ok: false, error: msg };
+    }
+  }
+
   async function setupSupabaseIntegration() {
     initSupabaseClient();
     const clientSelect = document.getElementById('select-cloud-client');
+    const uploadClientSelect = document.getElementById('select-upload-client');
     const sessionSelect = document.getElementById('select-cloud-session');
     const loadBtn = document.getElementById('btn-load-cloud');
     const statusDot = document.getElementById('supabase-status-dot');
@@ -1310,13 +1691,8 @@
         statusText.innerHTML = `<strong>Supabase:</strong> ${clients.length} Clientes`;
       }
 
-      clientSelect.innerHTML = '<option value="">-- Elige un cliente --</option>';
-      clients.forEach(c => {
-        const opt = document.createElement('option');
-        opt.value = c.usuario_id;
-        opt.textContent = `[${c.usuario_id}] ${c.nombre} · ${c.objetivo_codigo || 'General'}`;
-        clientSelect.appendChild(opt);
-      });
+      populateClientSelectElement(clientSelect, '-- Elige un cliente --');
+      populateClientSelectElement(uploadClientSelect, 'Solo visualizar localmente (no guardar)');
 
       clientSelect.addEventListener('change', async (e) => {
         const uid = e.target.value;
@@ -1364,41 +1740,88 @@
     loadBtn.disabled = true;
 
     try {
+      const sesSelectCols = 'id,fecha,numero_sesion_usuario,protocolo_codigo,ts_inicio,ts_fin,banda_reforzada_1,banda_reforzada_2,banda_reforzada_3,banda_reforzada_4,banda_inhibida_1,banda_inhibida_2,banda_inhibida_3,banda_inhibida_4';
       let sessions = [];
+      let pendingDeliveries = [];
+
       if (supabaseClient) {
-        const { data, error } = await supabaseClient
-          .from('sesiones')
-          .select('id, fecha, numero_sesion_usuario, protocolo_codigo, ts_inicio, ts_fin, banda_reforzada_1, banda_reforzada_2, banda_inhibida_1')
-          .eq('usuario_id', usuarioId)
-          .order('numero_sesion_usuario', { ascending: false });
-        if (error) throw error;
-        sessions = data || [];
+        const [sesRes, entRes] = await Promise.all([
+          supabaseClient
+            .from('sesiones')
+            .select(sesSelectCols)
+            .eq('usuario_id', usuarioId)
+            .order('numero_sesion_usuario', { ascending: false }),
+          supabaseClient
+            .from('entregas_p3')
+            .select('sesion_id, metadatos, estado, creado_en')
+            .eq('usuario_id', usuarioId)
+        ]);
+        if (sesRes.error) throw sesRes.error;
+        sessions = sesRes.data || [];
+        if (!entRes.error && entRes.data) pendingDeliveries = entRes.data;
       } else {
-        sessions = await supabaseRest(`sesiones?usuario_id=eq.${usuarioId}&select=id,fecha,numero_sesion_usuario,protocolo_codigo,ts_inicio,ts_fin,banda_reforzada_1,banda_reforzada_2,banda_inhibida_1&order=numero_sesion_usuario.desc`);
+        [sessions, pendingDeliveries] = await Promise.all([
+          supabaseRest(`sesiones?usuario_id=eq.${usuarioId}&select=${sesSelectCols}&order=numero_sesion_usuario.desc`),
+          supabaseRest(`entregas_p3?usuario_id=eq.${usuarioId}&select=sesion_id,metadatos,estado,creado_en`).catch(() => [])
+        ]);
       }
 
-      supabaseSessionsCache = sessions;
+      // Fusionar entregas nuevas (estado pendiente) que aún no han sido ingeridas a `sesiones`
+      const existingIds = new Set(sessions.map(s => String(s.id)));
+      const maxNum = sessions.reduce((m, s) => Math.max(m, s.numero_sesion_usuario || 0), 0);
+      let nextPendingNum = maxNum;
+      const mergedPending = [];
+
+      pendingDeliveries
+        .filter(e => !existingIds.has(String(e.sesion_id)))
+        .sort((a, b) => String(b.sesion_id).localeCompare(String(a.sesion_id)))
+        .forEach(e => {
+          nextPendingNum++;
+          const m = e.metadatos || {};
+          const datePart = (m.ts_inicio || e.creado_en || '').slice(0, 10);
+          mergedPending.push({
+            id: e.sesion_id,
+            fecha: datePart,
+            numero_sesion_usuario: nextPendingNum,
+            protocolo_codigo: m.protocolo_codigo || 'pruebas',
+            ts_inicio: m.ts_inicio || e.creado_en,
+            ts_fin: m.ts_fin || null,
+            banda_reforzada_1: m.banda_reforzada_1 || null,
+            banda_reforzada_2: m.banda_reforzada_2 || null,
+            banda_reforzada_3: m.banda_reforzada_3 || null,
+            banda_reforzada_4: m.banda_reforzada_4 || null,
+            banda_inhibida_1: m.banda_inhibida_1 || null,
+            banda_inhibida_2: m.banda_inhibida_2 || null,
+            banda_inhibida_3: m.banda_inhibida_3 || null,
+            banda_inhibida_4: m.banda_inhibida_4 || null,
+            _pending_estado: e.estado || 'pendiente'
+          });
+        });
+
+      const allSessions = [...mergedPending, ...sessions];
+      supabaseSessionsCache = allSessions;
 
       if (summaryBox && currentSelectedClient) {
         summaryBox.style.display = 'flex';
         if (targetLabel) targetLabel.textContent = `🎯 Objetivo: ${currentSelectedClient.objetivo_codigo || 'Concentración'}`;
-        if (totalLabel) totalLabel.textContent = `📊 ${sessions.length} / ${currentSelectedClient.session_total || 20} sesiones`;
+        if (totalLabel) totalLabel.textContent = `📊 ${allSessions.length} / ${currentSelectedClient.session_total || 20} sesiones`;
       }
 
-      if (!sessions.length) {
+      if (!allSessions.length) {
         sessionSelect.innerHTML = '<option value="">Sin sesiones registradas</option>';
         sessionSelect.disabled = true;
         return;
       }
 
       sessionSelect.innerHTML = '';
-      sessions.forEach(s => {
+      allSessions.forEach(s => {
         const opt = document.createElement('option');
         opt.value = s.id;
         const numText = s.numero_sesion_usuario ? `Sesión #${s.numero_sesion_usuario}` : `Sesión #${s.id}`;
         const dateText = s.fecha || '';
         const protoText = s.protocolo_codigo ? `(${s.protocolo_codigo})` : '';
-        opt.textContent = `${numText} · ${dateText} ${protoText}`;
+        const pendingTag = s._pending_estado ? ` · [${s._pending_estado}]` : '';
+        opt.textContent = `${numText} · ${dateText} ${protoText}${pendingTag}`;
         sessionSelect.appendChild(opt);
       });
 
@@ -1406,7 +1829,7 @@
       loadBtn.disabled = false;
 
       // Auto-seleccionar la sesión más reciente
-      sessionSelect.value = sessions[0].id;
+      sessionSelect.value = allSessions[0].id;
 
     } catch (e) {
       console.error('Error cargando sesiones del cliente:', e);
@@ -1414,31 +1837,62 @@
     }
   }
 
+  async function fetchSessionCsvAndMeta(sessionObj, sessionId, usuarioId) {
+    let entrega = null;
+    if (supabaseClient) {
+      const { data, error } = await supabaseClient
+        .from('entregas_p3')
+        .select('metadatos, serie_csv')
+        .eq('sesion_id', sessionId)
+        .eq('usuario_id', usuarioId)
+        .maybeSingle();
+      if (!error && data) entrega = data;
+    } else {
+      const list = await supabaseRest(`entregas_p3?sesion_id=eq.${sessionId}&usuario_id=eq.${usuarioId}&select=metadatos,serie_csv`);
+      if (list && list.length) entrega = list[0];
+    }
+
+    const meta = Object.assign({}, sessionObj || {}, entrega?.metadatos || {});
+    let parsedCsvString = '';
+
+    if (entrega && entrega.serie_csv) {
+      parsedCsvString = convertWideCsvToLong(entrega.serie_csv, meta);
+    } else {
+      let rows = [];
+      if (supabaseClient) {
+        const { data, error } = await supabaseClient
+          .from('serie_entrenamiento')
+          .select('*')
+          .eq('sesion_id', sessionId)
+          .order('timestamp_s', { ascending: true });
+        if (!error && data) rows = data;
+      } else {
+        rows = await supabaseRest(`serie_entrenamiento?sesion_id=eq.${sessionId}&select=*&order=timestamp_s.asc`);
+      }
+      if (rows && rows.length) {
+        parsedCsvString = convertSerieEntrenamientoToLong(rows, meta, sessionId);
+      }
+    }
+
+    return { parsedCsvString, meta };
+  }
+
   async function loadSelectedSupabaseStudy(sessionId, usuarioId) {
     const statusText = document.getElementById('supabase-status-text');
     if (statusText) statusText.innerHTML = `<strong>Supabase:</strong> Cargando #${sessionId}...`;
 
-    const sessionObj = supabaseSessionsCache.find(s => s.id === sessionId);
+    const sessionObj = supabaseSessionsCache.find(s => String(s.id) === String(sessionId));
     const clientObj = currentSelectedClient || supabaseClientsCache.find(c => c.usuario_id === usuarioId);
 
     try {
-      // 1. Intentar cargar desde entregas_p3 (tiene el CSV original completo y metadatos)
-      let entrega = null;
-      if (supabaseClient) {
-        const { data, error } = await supabaseClient
-          .from('entregas_p3')
-          .select('metadatos, serie_csv')
-          .eq('sesion_id', sessionId)
-          .eq('usuario_id', usuarioId)
-          .maybeSingle();
-        if (!error && data) entrega = data;
-      } else {
-        const list = await supabaseRest(`entregas_p3?sesion_id=eq.${sessionId}&usuario_id=eq.${usuarioId}&select=metadatos,serie_csv`);
-        if (list && list.length) entrega = list[0];
+      const { parsedCsvString, meta } = await fetchSessionCsvAndMeta(sessionObj, sessionId, usuarioId);
+
+      if (!parsedCsvString) {
+        if (statusText) statusText.innerHTML = `<strong>Supabase:</strong> ${supabaseClientsCache.length} Clientes`;
+        alert(`No se encontraron registros de datos para la sesión #${sessionId}`);
+        return;
       }
 
-      let parsedCsvString = '';
-      const meta = Object.assign({}, sessionObj || {}, entrega?.metadatos || {});
       meta.id = sessionId;
       meta.session_id = sessionId;
       meta.usuario_id = usuarioId;
@@ -1446,15 +1900,34 @@
       meta.session_number = sessionObj?.numero_sesion_usuario || 1;
       meta.total_sessions = clientObj?.session_total || TOTAL_PROGRAM_SESSIONS;
       meta.objective = clientObj?.objetivo_codigo || 'concentracion';
+      meta.start_time = meta.start_time || meta.ts_inicio || meta.fecha;
+      meta.end_time = meta.end_time || meta.ts_fin;
+      meta.protocol_name = meta.protocol_name || formatProtocolDisplayName(meta.protocolo_codigo, []);
 
-      // Identificar la sesión anterior de este usuario para calcular el Score comparativo
-      const allUserSessions = supabaseSessionsCache.slice().sort((a, b) => (a.numero_sesion_usuario || 0) - (b.numero_sesion_usuario || 0));
-      const curIdx = allUserSessions.findIndex(s => s.id === sessionId);
+      // Identificar la sesión anterior de este usuario para calcular su Score real
+      const allUserSessions = supabaseSessionsCache
+        .slice()
+        .sort((a, b) => (a.numero_sesion_usuario || 0) - (b.numero_sesion_usuario || 0));
+      const curIdx = allUserSessions.findIndex(s => String(s.id) === String(sessionId));
+
       if (curIdx > 0) {
         const prevSession = allUserSessions[curIdx - 1];
-        // Calcular o recuperar el score de la sesión previa
-        const prevScore = getCalculatedScoreForPreset(prevSession.id);
-        meta.past_session_score = prevScore;
+        let prevScore = sessionScoreHistory[prevSession.id];
+        if (prevScore === undefined) {
+          try {
+            const prevData = await fetchSessionCsvAndMeta(prevSession, prevSession.id, usuarioId);
+            if (prevData.parsedCsvString) {
+              const prevParsed = parseLongCsvRows(prevData.parsedCsvString, prevData.meta);
+              if (!prevParsed.error && prevParsed.rows.length) {
+                prevScore = computeSessionScoreFromRows(prevParsed.rows);
+                if (prevScore !== null) sessionScoreHistory[prevSession.id] = prevScore;
+              }
+            }
+          } catch (prevErr) {
+            console.warn('No se pudo calcular el score de la sesión previa:', prevErr);
+          }
+        }
+        meta.past_session_score = prevScore !== undefined ? prevScore : null;
         meta.past_session_label = `Sesión anterior (#${prevSession.numero_sesion_usuario || prevSession.id})`;
         meta.is_initial_session = false;
       } else {
@@ -1463,38 +1936,8 @@
         meta.past_session_label = 'Sesión inicial de referencia';
       }
 
-      if (entrega && entrega.serie_csv) {
-        parsedCsvString = convertWideCsvToLong(entrega.serie_csv, meta);
-      } else {
-        // Fallback: consultar serie_entrenamiento
-        let rows = [];
-        if (supabaseClient) {
-          const { data, error } = await supabaseClient
-            .from('serie_entrenamiento')
-            .select('*')
-            .eq('sesion_id', sessionId)
-            .order('timestamp_s', { ascending: true });
-          if (!error && data) rows = data;
-        } else {
-          rows = await supabaseRest(`serie_entrenamiento?sesion_id=eq.${sessionId}&select=*&order=timestamp_s.asc`);
-        }
-        if (rows && rows.length) {
-          parsedCsvString = convertSerieEntrenamientoToLong(rows, sessionObj || meta, sessionId);
-        }
-      }
-
-      if (!parsedCsvString) {
-        // Último fallback: verificar si está en los presets precargados de dataset.js
-        if (window.SESSION_PRESETS && window.SESSION_PRESETS[sessionId]) {
-          parsedCsvString = window.SESSION_PRESETS[sessionId].csv;
-        } else {
-          alert(`No se encontraron registros de datos para la sesión #${sessionId}`);
-          return;
-        }
-      }
-
-      // Procesar e inyectar en el motor del dashboard
-      parseAndProcessCSV(parsedCsvString, meta);
+      lastLoadedLocalSource = null;
+      parseCSV(parsedCsvString, meta);
 
       if (statusText) {
         statusText.innerHTML = `<strong>Supabase:</strong> ${meta.user_name} · #${sessionId}`;
@@ -1539,7 +1982,7 @@
         deep_zone_pct: m.deepZonePct,
         max_streak_s: m.maxStreak,
         mean_uV: parseFloat(mean.toFixed(3)),
-        total_valid_s: m.totalValid
+        total_valid_s: m.totalValidSeconds ?? m.totalValid
       };
     });
 
@@ -1923,36 +2366,54 @@
     drawChart(bandRows, actualRole, currentMetrics, hoverSecond);
   }
 
-  function computeMetrics(rows, role) {
-    const validWithThresh = rows.filter(r => r.valid === 1 && r.threshold !== null && !isNaN(r.threshold));
-    const totalValid = validWithThresh.length;
-    const totalRows = rows.length;
-    const artifacts = rows.filter(r => r.valid === 0).length;
-    const calibrationSeconds = rows.filter(r => r.threshold === null || isNaN(r.threshold)).length;
+  function detectTimeStepSeconds(rows) {
+    const uniqueTs = [...new Set(rows.map(r => r.t_s).filter(t => !isNaN(t)))].sort((a, b) => a - b);
+    if (uniqueTs.length < 2) return 1;
+    const deltas = [];
+    for (let i = 1; i < uniqueTs.length; i++) {
+      const diff = uniqueTs[i] - uniqueTs[i - 1];
+      if (diff > 0) deltas.push(diff);
+    }
+    if (!deltas.length) return 1;
+    deltas.sort((a, b) => a - b);
+    return Math.max(1, deltas[Math.floor(deltas.length / 2)]);
+  }
 
-    let zoneSeconds = 0;
-    let deepZoneSeconds = 0;
+  function computeMetrics(rows, role) {
+    const sortedRows = [...rows].sort((a, b) => a.t_s - b.t_s);
+    const dt = detectTimeStepSeconds(sortedRows);
+
+    const validWithThresh = sortedRows.filter(r => r.valid === 1 && r.threshold !== null && !isNaN(r.threshold));
+    const totalValid = validWithThresh.length;
+    const totalValidSeconds = totalValid * dt;
+    const totalRows = sortedRows.length;
+    const artifacts = sortedRows.filter(r => r.valid === 0).length * dt;
+    const calibrationSeconds = sortedRows.filter(r => r.threshold === null || isNaN(r.threshold)).length * dt;
+
+    let zoneCount = 0;
+    let deepZoneCount = 0;
 
     validWithThresh.forEach(r => {
       const isSuccess = evaluateRowSuccess(r, role);
-      if (isSuccess) zoneSeconds++;
+      if (isSuccess) zoneCount++;
 
       const isDeep = evaluateRowDeep(r, role);
-      if (isDeep) deepZoneSeconds++;
+      if (isDeep) deepZoneCount++;
     });
 
-    const totalZonePct = totalValid > 0 ? (zoneSeconds / totalValid) * 100 : 0;
-    const deepZonePct = totalValid > 0 ? (deepZoneSeconds / totalValid) * 100 : 0;
+    const zoneSeconds = zoneCount * dt;
+    const deepZoneSeconds = deepZoneCount * dt;
+    const totalZonePct = totalValid > 0 ? (zoneCount / totalValid) * 100 : 0;
+    const deepZonePct = totalValid > 0 ? (deepZoneCount / totalValid) * 100 : 0;
 
-    // Rachas continuas (uniendo a través de muestras válidas consecutivas)
+    // Rachas continuas en segundos reales (uniendo a través de muestras válidas consecutivas)
     const streaks = [];
     let currentStreak = 0;
-    const sortedRows = [...rows].sort((a, b) => a.t_s - b.t_s);
     sortedRows.forEach(row => {
       if (row.valid === 1 && row.threshold !== null && !isNaN(row.threshold)) {
         const isSuccess = evaluateRowSuccess(row, role);
         if (isSuccess) {
-          currentStreak++;
+          currentStreak += dt;
         } else {
           if (currentStreak > 0) streaks.push(currentStreak);
           currentStreak = 0;
@@ -1970,7 +2431,7 @@
     });
     const xp = Math.round(feedbackScore * 0.45);
 
-    const maxT = Math.max(...rows.map(r => r.t_s), 60);
+    const maxT = Math.max(...sortedRows.map(r => r.t_s), 60);
     const totalMinutesCount = Math.max(1, Math.ceil(maxT / 60));
     const minutes = [];
 
@@ -1983,7 +2444,8 @@
       minutes.push({ minute: minIdx + 1, pct: Math.round(pct), count: minRows.length });
     }
 
-    const activeMinutes = minutes.filter(m => m.count >= 5);
+    const minActiveSec = Math.max(5, dt);
+    const activeMinutes = minutes.filter(m => (m.count * dt) >= minActiveSec);
     let bestMin = activeMinutes[0] || minutes[0];
     let worstMin = activeMinutes[0] || minutes[0];
     activeMinutes.forEach(m => {
@@ -2010,6 +2472,8 @@
       zoneSeconds,
       deepZoneSeconds,
       totalValid,
+      totalValidSeconds,
+      dt,
       totalRows,
       artifacts,
       calibrationSeconds,

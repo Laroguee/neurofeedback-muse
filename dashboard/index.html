@@ -21,23 +21,6 @@
           <span class="brand-text"><strong>Muse 2</strong> Neurofeedback</span>
         </div>
 
-        <!-- Selector rápido de sesiones pre-cargadas (Nuevos Entrenamientos) -->
-        <div class="preset-quick-bar" id="preset-quick-bar" aria-label="Cargar sesiones de ejemplo">
-          <span class="preset-bar-label">Sesiones:</span>
-          <button type="button" class="preset-pill-btn active" data-preset="011" title="Sesión 011 · Usuario 003 · Pruebas (3 bandas)">
-            #011 Usuario 003
-          </button>
-          <button type="button" class="preset-pill-btn" data-preset="005" title="Sesión 005 · Usuario 003 · Rob-Train (3 bandas)">
-            #005 Usuario 003
-          </button>
-          <button type="button" class="preset-pill-btn" data-preset="004" title="Sesión 004 · Usuario 001 · Pruebas (2 bandas)">
-            #004 Usuario 001
-          </button>
-          <button type="button" class="preset-pill-btn" data-preset="sim-001" title="Sesión #003 · Demo Foco SMR (Boceto)">
-            #003 Demo Boceto
-          </button>
-        </div>
-
         <div class="view-toggles" role="group" aria-label="Cambiar modo de pantalla">
           <button class="view-toggle-btn active" data-mode="auto" id="btn-mode-auto" title="Adaptable a tu pantalla">
             <svg viewBox="0 0 20 20" width="14" height="14" fill="currentColor"><path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/></svg>
@@ -118,6 +101,12 @@
               </svg>
               <span id="device-electrodes-text">Diadema Muse 2 · Entrenamiento Cerebral</span>
             </div>
+            <button type="button" class="btn btn-cloud-save header-upload-btn" id="btn-save-local-to-cloud" style="display:none;" title="Vincular esta sesión local a un cliente en Supabase">
+              <svg viewBox="0 0 20 20" width="14" height="14" fill="currentColor">
+                <path d="M5.5 16a3.5 3.5 0 01-.369-6.98 4 4 0 117.753-1.977A4.5 4.5 0 1113.5 16h-8z"/>
+              </svg>
+              <span>Guardar en Supabase</span>
+            </button>
             <label class="btn btn-secondary header-upload-btn" id="header-upload-label" style="display:none;" title="Cargar archivo .csv y/o meta.json">
               <svg viewBox="0 0 20 20" width="14" height="14" fill="currentColor">
                 <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
@@ -198,30 +187,29 @@
             <span class="dropzone-hint">Puedes seleccionar ambos archivos (.csv + .json) a la vez o arrastrarlos aquí</span>
           </div>
 
-          <!-- Botones de Casos Reales (Nuevos Entrenamientos) -->
-          <div class="demo-trigger-box">
-            <span class="demo-box-kicker">🧪 Sesiones disponibles para visualizar:</span>
-            <div class="demo-buttons-row">
-              <button type="button" class="btn-demo-card primary-demo" data-preset="011">
-                <span class="demo-card-badge">Sesión #011 · Usuario 003</span>
-                <strong>Sesión de Entrenamiento #011</strong>
-                <span class="demo-card-sub">Sesión completa con 3 parámetros de autorregulación</span>
-              </button>
-              <button type="button" class="btn-demo-card" data-preset="005">
-                <span class="demo-card-badge">Sesión #005 · Usuario 003</span>
-                <strong>Sesión de Entrenamiento #005</strong>
-                <span class="demo-card-sub">Sesión completa con 3 parámetros de autorregulación</span>
-              </button>
-              <button type="button" class="btn-demo-card" data-preset="004">
-                <span class="demo-card-badge">Sesión #004 · Usuario 001</span>
-                <strong>Sesión de Entrenamiento #004</strong>
-                <span class="demo-card-sub">Sesión inicial con 2 parámetros de autorregulación</span>
-              </button>
-              <button type="button" class="btn-demo-card" data-preset="sim-001" id="btn-load-demo">
-                <span class="demo-card-badge">Sesión #003 · Demo Boceto</span>
-                <strong>Sesión Demostrativa #003</strong>
-                <span class="demo-card-sub">Sesión de referencia con 3 parámetros de autorregulación</span>
-              </button>
+          <!-- Vinculación opcional con cliente de Supabase al subir estudio local -->
+          <div class="cloud-link-box" id="local-cloud-link-box">
+            <div class="cloud-link-header">
+              <span class="cloud-link-kicker">☁️ Vincular subida local a un cliente en Supabase (opcional)</span>
+              <span class="cloud-link-sub">Si eliges un cliente, el archivo se cargará automáticamente como un nuevo estudio en la nube para ese cliente.</span>
+            </div>
+            <div class="cloud-link-controls">
+              <div class="cloud-link-field">
+                <label for="select-upload-client" class="supabase-field-label">Cliente destino:</label>
+                <select id="select-upload-client" class="supabase-dropdown">
+                  <option value="">Solo visualizar localmente (no guardar)</option>
+                </select>
+              </div>
+              <div class="cloud-link-extra" id="upload-cloud-extra-fields" style="display:none;">
+                <div class="cloud-link-field">
+                  <label for="input-upload-session-id" class="supabase-field-label">ID Estudio:</label>
+                  <input type="text" id="input-upload-session-id" class="cloud-link-input" placeholder="Ej. 036" pattern="[0-9]{3,}" title="3 o más dígitos numéricos (ej. 036)">
+                </div>
+                <div class="cloud-link-field">
+                  <label for="input-upload-protocol" class="supabase-field-label">Protocolo:</label>
+                  <input type="text" id="input-upload-protocol" class="cloud-link-input" placeholder="Auto (del .json o bandas)">
+                </div>
+              </div>
             </div>
           </div>
 
@@ -699,9 +687,42 @@
     </div>
   </div>
 
+  <!-- Modal para Vincular Sesión Local a un Cliente en Supabase -->
+  <div class="modal-backdrop" id="cloud-link-modal" style="display:none">
+    <div class="modal-dialog cloud-modal-dialog">
+      <div class="modal-header">
+        <h2>Guardar Estudio en Supabase</h2>
+        <button class="close-modal-btn" id="close-cloud-link-modal" aria-label="Cerrar modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>Vincula la sesión cargada localmente con un cliente para registrarla como un nuevo estudio en la nube.</p>
+        <div class="cloud-modal-form">
+          <div class="cloud-modal-field">
+            <label for="modal-select-upload-client">Cliente:</label>
+            <select id="modal-select-upload-client" class="supabase-dropdown">
+              <option value="">-- Selecciona un cliente --</option>
+            </select>
+          </div>
+          <div class="cloud-modal-field">
+            <label for="modal-input-session-id">ID de Estudio (3+ dígitos):</label>
+            <input type="text" id="modal-input-session-id" class="cloud-link-input" placeholder="Ej. 036" pattern="[0-9]{3,}">
+          </div>
+          <div class="cloud-modal-field">
+            <label for="modal-input-protocol">Código de Protocolo:</label>
+            <input type="text" id="modal-input-protocol" class="cloud-link-input" placeholder="Ej. pruebas o rob_train">
+          </div>
+          <p class="cloud-modal-status" id="cloud-modal-status" style="display:none;"></p>
+          <div class="cloud-modal-actions">
+            <button type="button" class="btn btn-secondary" id="btn-cancel-cloud-link">Cancelar</button>
+            <button type="button" class="btn btn-primary" id="btn-confirm-cloud-link">Guardar Nuevo Estudio</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="dataset.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
