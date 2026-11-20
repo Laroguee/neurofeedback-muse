@@ -32,6 +32,7 @@
     sampling_rate: 256
   };
   let lastLoadedLocalSource = null;
+  let clientLockedContext = null;
 
   // Nomenclatura Electroencefalográfica Estándar (Bandas EEG y Rangos en Hz)
   const BAND_CONFIG = {
@@ -132,6 +133,10 @@
   const minutesGrid = document.getElementById('minutes-progress-grid');
 
   function init() {
+    clientLockedContext = parseClientDeepLinkParams();
+    if (clientLockedContext) {
+      activateClientLockedUI(clientLockedContext);
+    }
     setupViewModeSwitcher();
     setupSectionViewSwitcher();
     setupDraftControls();
@@ -148,7 +153,8 @@
     toggleBtns.forEach(btn => {
       btn.addEventListener('click', () => {
         const mode = btn.getAttribute('data-mode');
-        document.body.className = `mode-${mode}`;
+        document.body.classList.remove('mode-auto', 'mode-desktop', 'mode-tablet', 'mode-mobile');
+        document.body.classList.add(`mode-${mode}`);
         toggleBtns.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
 
@@ -313,6 +319,7 @@
   }
 
   function setupDragAndDrop() {
+    if (clientLockedContext) return;
     const dropzoneBox = document.getElementById('dropzone-box');
 
     window.addEventListener('dragover', (e) => {
@@ -369,6 +376,7 @@
     lastLoadedLocalSource = null;
 
     const emptyState = document.getElementById('empty-state-view');
+    const autoloadView = document.getElementById('cloud-autoload-view');
     const draftSection = document.getElementById('draft-summary-section');
     const clinicalWrapper = document.getElementById('clinical-section-wrapper');
     const headerUploadLabel = document.getElementById('header-upload-label');
@@ -376,7 +384,13 @@
     const sectionSwitcher = document.getElementById('dashboard-section-switcher');
     const progressWidget = document.getElementById('session-progress-widget');
 
-    if (emptyState) emptyState.style.display = 'flex';
+    if (clientLockedContext) {
+      if (emptyState) emptyState.style.display = 'none';
+      if (autoloadView) autoloadView.style.display = 'flex';
+    } else {
+      if (emptyState) emptyState.style.display = 'flex';
+      if (autoloadView) autoloadView.style.display = 'none';
+    }
     if (draftSection) draftSection.style.display = 'none';
     if (clinicalWrapper) clinicalWrapper.style.display = 'none';
     if (headerUploadLabel) headerUploadLabel.style.display = 'none';
@@ -384,14 +398,16 @@
     if (sectionSwitcher) sectionSwitcher.style.display = 'none';
     if (progressWidget) progressWidget.style.display = 'none';
 
-    document.getElementById('header-time').textContent = 'Esperando archivo .csv';
+    document.getElementById('header-time').textContent = clientLockedContext ? 'Cargando tu sesión...' : 'Esperando archivo .csv';
     const statusBadge = document.getElementById('header-status-badge');
     if (statusBadge) {
       statusBadge.className = 'badge waiting-badge';
-      statusBadge.innerHTML = '<span class="pulse-dot amber"></span> Esperando datos';
+      statusBadge.innerHTML = clientLockedContext
+        ? '<span class="pulse-dot amber"></span> Cargando resultados'
+        : '<span class="pulse-dot amber"></span> Esperando datos';
     }
     document.getElementById('protocol-badge').textContent = 'Resumen de tu Entrenamiento';
-    document.getElementById('session-id-display').textContent = 'Carga de Sesión';
+    document.getElementById('session-id-display').textContent = clientLockedContext ? 'Cargando Sesión...' : 'Carga de Sesión';
     const durationEl = document.getElementById('quick-duration');
     if (durationEl) durationEl.textContent = '--';
   }
@@ -399,18 +415,24 @@
   function updateSaveToCloudButtonVisibility() {
     const saveCloudBtn = document.getElementById('btn-save-local-to-cloud');
     if (!saveCloudBtn) return;
+    if (clientLockedContext) {
+      saveCloudBtn.style.display = 'none';
+      return;
+    }
     const canSave = Boolean(lastLoadedLocalSource && !lastLoadedLocalSource.savedToCloud && rawData.length > 0);
     saveCloudBtn.style.display = canSave ? 'inline-flex' : 'none';
   }
 
   function hideEmptyState() {
     const emptyState = document.getElementById('empty-state-view');
+    const autoloadView = document.getElementById('cloud-autoload-view');
     const headerUploadLabel = document.getElementById('header-upload-label');
     const sectionSwitcher = document.getElementById('dashboard-section-switcher');
     const progressWidget = document.getElementById('session-progress-widget');
 
     if (emptyState) emptyState.style.display = 'none';
-    if (headerUploadLabel) headerUploadLabel.style.display = 'inline-flex';
+    if (autoloadView) autoloadView.style.display = 'none';
+    if (headerUploadLabel) headerUploadLabel.style.display = clientLockedContext ? 'none' : 'inline-flex';
     if (sectionSwitcher) sectionSwitcher.style.display = 'inline-flex';
     if (progressWidget) progressWidget.style.display = 'flex';
     updateSaveToCloudButtonVisibility();
@@ -1658,6 +1680,177 @@
     }
   }
 
+  function parseClientDeepLinkParams() {
+    const search = (window.location && window.location.search) || '';
+    if (!search || search === '?') return null;
+
+    const params = new URLSearchParams(search);
+    const rawClient = (
+      params.get('cliente') ||
+      params.get('usuario_id') ||
+      params.get('usuario') ||
+      params.get('user') ||
+      params.get('client') ||
+      ''
+    ).trim();
+
+    if (!rawClient) return null;
+
+    const rawSession = (
+      params.get('sesion') ||
+      params.get('sesion_id') ||
+      params.get('session') ||
+      params.get('session_id') ||
+      ''
+    ).trim();
+
+    const rawSessionNum = (
+      params.get('numero_sesion') ||
+      params.get('num_sesion') ||
+      params.get('n') ||
+      ''
+    ).trim();
+
+    const normalizeId = (val) => (/^\d+$/.test(val) ? val.padStart(3, '0') : val);
+    const usuarioId = normalizeId(rawClient);
+    const isLatestAlias = ['ultima', 'latest', 'last'].includes(rawSession.toLowerCase());
+    const sesionId = rawSession && !isLatestAlias ? normalizeId(rawSession) : '';
+    const numeroSesion = /^\d+$/.test(rawSessionNum) ? parseInt(rawSessionNum, 10) : null;
+    const rawSessionAsNum = /^\d+$/.test(rawSession) ? parseInt(rawSession, 10) : null;
+
+    return {
+      usuarioId,
+      sesionId,
+      numeroSesion,
+      rawSessionAsNum
+    };
+  }
+
+  function activateClientLockedUI(ctx) {
+    document.body.classList.add('client-locked-mode');
+
+    const lockedBadge = document.getElementById('locked-client-badge');
+    const lockedName = document.getElementById('locked-client-name');
+    if (lockedBadge) lockedBadge.style.display = 'inline-flex';
+    if (lockedName) lockedName.textContent = `Usuario ${ctx.usuarioId}`;
+
+    const clientField = document.getElementById('supabase-client-field');
+    if (clientField) clientField.style.display = 'none';
+
+    const retryBtn = document.getElementById('btn-retry-autoload');
+    if (retryBtn && !retryBtn.dataset.bound) {
+      retryBtn.dataset.bound = '1';
+      retryBtn.addEventListener('click', () => {
+        if (supabaseClientsCache.length > 0) {
+          autoLoadLockedClientSession(clientLockedContext);
+        } else {
+          setupSupabaseIntegration();
+        }
+      });
+    }
+  }
+
+  function setAutoloadState({ loading, title, desc, showRetry = false }) {
+    const spinner = document.getElementById('cloud-autoload-spinner');
+    const titleEl = document.getElementById('cloud-autoload-title');
+    const descEl = document.getElementById('cloud-autoload-desc');
+    const retryBtn = document.getElementById('btn-retry-autoload');
+
+    if (spinner) spinner.style.display = loading ? 'block' : 'none';
+    if (titleEl && title) titleEl.textContent = title;
+    if (descEl && desc) descEl.textContent = desc;
+    if (retryBtn) retryBtn.style.display = showRetry ? 'inline-flex' : 'none';
+  }
+
+  function resolveTargetSessionFromCache(ctx) {
+    if (!supabaseSessionsCache.length) return { session: null, exactMatch: false };
+
+    // 1. Si se indicó explícitamente numero_sesion (número secuencial del cliente)
+    if (ctx.numeroSesion !== null) {
+      const byNum = supabaseSessionsCache.find(s => Number(s.numero_sesion_usuario) === ctx.numeroSesion);
+      if (byNum) return { session: byNum, exactMatch: true };
+    }
+
+    // 2. Buscar por ID global de sesión (sesiones.id / entregas_p3.sesion_id)
+    if (ctx.sesionId) {
+      const byId = supabaseSessionsCache.find(s => String(s.id) === String(ctx.sesionId));
+      if (byId) return { session: byId, exactMatch: true };
+
+      // Fallback tolerante: si mandaron numero_sesion_usuario en ?sesion=5
+      if (ctx.rawSessionAsNum !== null) {
+        const bySeqFallback = supabaseSessionsCache.find(s => Number(s.numero_sesion_usuario) === ctx.rawSessionAsNum);
+        if (bySeqFallback) return { session: bySeqFallback, exactMatch: true };
+      }
+
+      return { session: null, exactMatch: false };
+    }
+
+    // 3. Sin parámetro de sesión (o ?sesion=ultima): devolver la sesión más reciente
+    return { session: supabaseSessionsCache[0], exactMatch: true };
+  }
+
+  async function autoLoadLockedClientSession(ctx) {
+    const sessionSelect = document.getElementById('select-cloud-session');
+    const requestedSpecific = Boolean(ctx.sesionId || ctx.numeroSesion !== null);
+    const maxAttempts = requestedSpecific ? 3 : 2;
+
+    setAutoloadState({
+      loading: true,
+      title: 'Cargando tus resultados...',
+      desc: ctx.sesionId
+        ? `Buscando tu sesión #${ctx.sesionId} en la nube...`
+        : 'Obteniendo los datos de tu última sesión de neurofeedback...',
+      showRetry: false
+    });
+
+    let resolved = { session: null, exactMatch: false };
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      await onClientSelected(ctx.usuarioId);
+      resolved = resolveTargetSessionFromCache(ctx);
+
+      if (resolved.session && resolved.exactMatch) break;
+
+      if (attempt < maxAttempts) {
+        setAutoloadState({
+          loading: true,
+          title: 'Sincronizando sesión reciente...',
+          desc: `Esperando a que los datos de tu entrenamiento terminen de registrarse (intento ${attempt + 1}/${maxAttempts})...`,
+          showRetry: false
+        });
+        await new Promise(r => setTimeout(r, 1500));
+      }
+    }
+
+    // Si pidió una sesión concreta que aún no existe pero sí tiene sesiones previas, abrir la más reciente
+    const targetSession = resolved.session || (supabaseSessionsCache.length ? supabaseSessionsCache[0] : null);
+
+    if (!targetSession) {
+      setAutoloadState({
+        loading: false,
+        title: 'Aún no hay sesiones registradas',
+        desc: `No se encontraron entrenamientos disponibles para el cliente #${ctx.usuarioId}. Si acabas de terminar tu sesión, espera unos segundos y pulsa Reintentar.`,
+        showRetry: true
+      });
+      return;
+    }
+
+    if (sessionSelect) {
+      sessionSelect.value = targetSession.id;
+    }
+
+    await loadSelectedSupabaseStudy(targetSession.id, ctx.usuarioId);
+
+    if (!rawData.length) {
+      setAutoloadState({
+        loading: false,
+        title: 'No se pudo cargar la sesión',
+        desc: `Ocurrió un problema al leer los datos de la sesión #${targetSession.id}. Puedes elegir otro estudio arriba o reintentar.`,
+        showRetry: true
+      });
+    }
+  }
+
   async function setupSupabaseIntegration() {
     initSupabaseClient();
     const clientSelect = document.getElementById('select-cloud-client');
@@ -1671,6 +1864,77 @@
 
     try {
       if (statusText) statusText.innerHTML = '<strong>Supabase:</strong> Conectando...';
+
+      // =====================================================================
+      // SUB-MODO 1B: CLIENTE BLOQUEADO VÍA QUERY PARAMS (?cliente=...&sesion=...)
+      // =====================================================================
+      if (clientLockedContext) {
+        const lockedUid = clientLockedContext.usuarioId;
+        let lockedClients = [];
+
+        if (supabaseClient) {
+          const { data, error } = await supabaseClient
+            .from('clientes_perfil')
+            .select('usuario_id, nombre, objetivo_codigo, session_total')
+            .eq('usuario_id', lockedUid);
+          if (error) throw error;
+          lockedClients = data || [];
+        } else {
+          lockedClients = await supabaseRest(`clientes_perfil?usuario_id=eq.${encodeURIComponent(lockedUid)}&select=usuario_id,nombre,objetivo_codigo,session_total`);
+        }
+
+        const clientObj = lockedClients[0] || {
+          usuario_id: lockedUid,
+          nombre: `Usuario ${lockedUid}`,
+          objetivo_codigo: 'concentracion',
+          session_total: TOTAL_PROGRAM_SESSIONS
+        };
+
+        supabaseClientsCache = [clientObj];
+        currentSelectedClient = clientObj;
+
+        if (statusDot) statusDot.className = 'pulse-dot green';
+        if (statusText) statusText.innerHTML = `<strong>Supabase:</strong> ${clientObj.nombre}`;
+
+        const lockedName = document.getElementById('locked-client-name');
+        if (lockedName) lockedName.textContent = `${clientObj.nombre} (#${clientObj.usuario_id})`;
+
+        clientSelect.innerHTML = '';
+        const opt = document.createElement('option');
+        opt.value = clientObj.usuario_id;
+        opt.textContent = `[${clientObj.usuario_id}] ${clientObj.nombre}`;
+        opt.selected = true;
+        clientSelect.appendChild(opt);
+        clientSelect.disabled = true;
+
+        if (!sessionSelect.dataset.lockedBound) {
+          sessionSelect.dataset.lockedBound = '1';
+          sessionSelect.addEventListener('change', async () => {
+            const sid = sessionSelect.value;
+            loadBtn.disabled = !sid;
+            if (sid) {
+              await loadSelectedSupabaseStudy(sid, lockedUid);
+            }
+          });
+        }
+
+        if (!loadBtn.dataset.lockedBound) {
+          loadBtn.dataset.lockedBound = '1';
+          loadBtn.addEventListener('click', async () => {
+            const sid = sessionSelect.value;
+            if (sid) {
+              await loadSelectedSupabaseStudy(sid, lockedUid);
+            }
+          });
+        }
+
+        await autoLoadLockedClientSession(clientLockedContext);
+        return;
+      }
+
+      // =====================================================================
+      // MODO NORMAL (SIN QUERY PARAMS): TODOS LOS CLIENTES + SUBIDA LOCAL
+      // =====================================================================
       let clients = [];
       if (supabaseClient) {
         const { data, error } = await supabaseClient
@@ -1724,6 +1988,14 @@
       if (statusDot) statusDot.className = 'pulse-dot amber';
       if (statusText) statusText.innerHTML = '<strong>Supabase:</strong> Modo local (offline)';
       if (clientSelect) clientSelect.innerHTML = '<option value="">Modo offline (Sin conexión)</option>';
+      if (clientLockedContext) {
+        setAutoloadState({
+          loading: false,
+          title: 'Sin conexión a la nube',
+          desc: 'No fue posible conectar con Supabase para cargar tus resultados. Verifica tu conexión e inténtalo nuevamente.',
+          showRetry: true
+        });
+      }
     }
   }
 

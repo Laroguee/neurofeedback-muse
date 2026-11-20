@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261119">
+  <link rel="stylesheet" href="styles.css?v=20261119-2">
 </head>
 <body class="mode-auto">
   <div class="page-wrapper">
@@ -55,7 +55,12 @@
         </div>
 
         <div class="supabase-selectors">
-          <div class="supabase-field">
+          <div class="locked-client-badge" id="locked-client-badge" style="display:none;" title="Sesión vinculada al cliente">
+            <span class="locked-client-icon">👤</span>
+            <span id="locked-client-name">Cargando cliente...</span>
+          </div>
+
+          <div class="supabase-field" id="supabase-client-field">
             <label for="select-cloud-client" class="supabase-field-label">Cliente:</label>
             <select id="select-cloud-client" class="supabase-dropdown">
               <option value="">Cargando clientes de la nube...</option>
@@ -155,6 +160,21 @@
           </div>
         </div>
       </header>
+
+      <!-- Estado de Autocarga para Modo Cliente (Query Params) -->
+      <section class="empty-state-section" id="cloud-autoload-view" style="display:none;" aria-live="polite">
+        <div class="empty-state-card cloud-autoload-card">
+          <div class="empty-glow"></div>
+          <div class="autoload-spinner" id="cloud-autoload-spinner"></div>
+          <h2 class="empty-title" id="cloud-autoload-title">Cargando tus resultados...</h2>
+          <p class="empty-description" id="cloud-autoload-desc">
+            Estamos obteniendo los datos de tu última sesión de neurofeedback desde la nube.
+          </p>
+          <button type="button" class="btn btn-primary" id="btn-retry-autoload" style="display:none;">
+            Reintentar carga
+          </button>
+        </div>
+      </section>
 
       <!-- Vista de Estado Inicial / Dropzone para Subir CSV y JSON -->
       <section class="empty-state-section" id="empty-state-view">
@@ -723,6 +743,6 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=20261119"></script>
+  <script src="app.js?v=20261119-2"></script>
 </body>
 </html>

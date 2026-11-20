@@ -2728,4 +2728,55 @@ body.mode-desktop .dashboard-body-grid {
   margin-top: 6px;
 }
 
+/* ==========================================================
+   MODO CLIENTE BLOQUEADO (QUERY PARAMS DESDE APP DE ENTRENAMIENTO)
+   ========================================================== */
+body.client-locked-mode #supabase-client-field,
+body.client-locked-mode #empty-state-view,
+body.client-locked-mode #header-upload-label,
+body.client-locked-mode #upload-csv-label,
+body.client-locked-mode #btn-save-local-to-cloud {
+  display: none !important;
+}
+
+.locked-client-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: var(--radius-full);
+  background: rgba(56, 189, 248, 0.14);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  color: #E0F2FE;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.locked-client-icon {
+  font-size: 0.85rem;
+}
+
+.cloud-autoload-card {
+  gap: 14px;
+  align-items: center;
+  text-align: center;
+}
+
+.autoload-spinner {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 3px solid rgba(56, 189, 248, 0.2);
+  border-top-color: #38BDF8;
+  animation: autoloadSpin 0.85s linear infinite;
+}
+
+@keyframes autoloadSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+
 
